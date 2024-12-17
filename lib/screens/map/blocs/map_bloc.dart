@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'map_event.dart';
 import 'map_state.dart';
 import 'package:location_repository/location_repository.dart';
@@ -28,6 +29,9 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   double _totalDistance = 0;
   double _totalSpeed = 0;
   int _speedCount = 0;
+
+  // Offline queue for updates
+  final List<Map<String, dynamic>> _offlineUpdates = [];
 
   MapBloc({required this.locationRepository}) : super(MapInitial()) {
     _initialize();
@@ -141,8 +145,17 @@ class MapBloc extends Bloc<MapEvent, MapState> {
           }
         }
 
+        // Prepare data for upload
+        final data = {
+          'waiting_time': _waitingTime,
+          'active_time': _activeTime,
+          'last_location': {'lat': position.latitude, 'lng': position.longitude},
+          'avg_speed': _speedCount > 0 ? _totalSpeed / _speedCount : 0,
+        };
+
+        // Update report
         if (_reportId != null) {
-          await _updateReport(position, speed);
+          await _updateReport(data);
         }
 
         _lastPosition = position;
@@ -162,7 +175,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     _totalSpeed = 0;
     _speedCount = 0;
 
-    FirebaseFirestore.instance.collection('actor_report').doc(_reportId).set({
+    final data = {
       'report_id': _reportId,
       'device_id': _deviceId,
       'route_name': _currentRouteName,
@@ -171,20 +184,33 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       'start_location': {'lat': position.latitude, 'lng': position.longitude},
       'last_location': {'lat': position.latitude, 'lng': position.longitude},
       'avg_speed': null,
-    });
+    };
+
+    _uploadData(data);
   }
 
-  Future<void> _updateReport(LatLng position, double speed) async {
-    final avgSpeed = _speedCount > 0 ? _totalSpeed / _speedCount : 0;
+  Future<void> _updateReport(Map<String, dynamic> data) async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) {
+      print('No internet connection. Queuing update.');
+      _offlineUpdates.add(data);
+    } else {
+      await _uploadData(data);
+      await _syncOfflineData();
+    }
+  }
 
-    await FirebaseFirestore.instance.collection('actor_report').doc(_reportId).update({
-      'waiting_time': _waitingTime,
-      'active_time': _activeTime,
-      'last_location': {'lat': position.latitude, 'lng': position.longitude},
-      'avg_speed': avgSpeed,
-    });
+  Future<void> _uploadData(Map<String, dynamic> data) async {
+    await FirebaseFirestore.instance.collection('actor_report').doc(_reportId).set(data, SetOptions(merge: true));
+    print('Data uploaded: $data');
+  }
 
-    print('Report Updated: Active Time: $_activeTime, Avg Speed: $avgSpeed');
+  Future<void> _syncOfflineData() async {
+    while (_offlineUpdates.isNotEmpty) {
+      final data = _offlineUpdates.removeAt(0);
+      await _uploadData(data);
+      print('Offline data synced: $data');
+    }
   }
 
   bool _isNearRoute(LatLng position, List<List<double>> polyline, {int distanceThreshold = 50}) {
