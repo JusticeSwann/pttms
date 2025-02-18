@@ -7,15 +7,15 @@ sealed class MapEvent extends Equatable {
   List<Object> get props => [];
 }
 
-class MapLoad extends MapEvent{}
+class MapLoad extends MapEvent {}
 
-class UpdateCameraPosition extends MapEvent{
+class UpdateCameraPosition extends MapEvent {
   final LatLng position;
 
   const UpdateCameraPosition(this.position);
-  
+
   @override
   List<Object> get props => [position];
 }
 
-
+class MoveToCurrentLocation extends MapEvent {}

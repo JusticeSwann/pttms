@@ -9,17 +9,15 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: const GoogleMapsWidget(
-
-      ),
+      body: const GoogleMapsWidget(),
       floatingActionButton: BlocBuilder<MapBloc, MapState>(
         builder: (context, state) {
           return FloatingActionButton(
             onPressed: () {
-              context.read<MapBloc>().add(MapLoad());
+              context.read<MapBloc>().add(MoveToCurrentLocation());
             },
             shape: const CircleBorder(),
-            child: const Icon(Icons.location_pin),
+            child: const Icon(Icons.my_location), 
           );
         },
       ),

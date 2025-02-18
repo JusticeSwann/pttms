@@ -12,6 +12,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   MapBloc({required this.locationRepository}) : super(MapInitial()) {
     on<MapLoad>(_onMapLoad);
     on<UpdateCameraPosition>(_onUpdateCameraPosition);
+    on<MoveToCurrentLocation>(_onMoveToCurrentLocation);
   }
 
   Future<void> _onMapLoad(MapLoad event, Emitter<MapState> emit) async {
@@ -36,5 +37,18 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       emit(MapLoaded(event.position));
     }
   }
-}
 
+  Future<void> _onMoveToCurrentLocation(
+      MoveToCurrentLocation event, Emitter<MapState> emit) async {
+    if (state is MapLoaded) {
+      try {
+        final LatLng? position = await locationRepository.getCurrentLocation();
+        if (position != null) {
+          emit(MapLoaded(position)); 
+        }
+      } catch (e) {
+        emit(MapError('Failed to fetch current location: ${e.toString()}'));
+      }
+    }
+  }
+}
