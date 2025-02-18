@@ -11,6 +11,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
 
   MapBloc({required this.locationRepository}) : super(MapInitial()) {
     on<MapLoad>(_onMapLoad);
+    on<UpdateCameraPosition>(_onUpdateCameraPosition);
   }
 
   Future<void> _onMapLoad(MapLoad event, Emitter<MapState> emit) async {
@@ -26,6 +27,13 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       }
     } catch (e) {
       emit(MapError('Failed to load map: ${e.toString()}'));
+    }
+  }
+
+  void _onUpdateCameraPosition(
+      UpdateCameraPosition event, Emitter<MapState> emit) {
+    if (state is MapLoaded) {
+      emit(MapLoaded(event.position));
     }
   }
 }
