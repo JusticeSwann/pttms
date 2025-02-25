@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -8,6 +9,7 @@ part 'map_state.dart';
 
 class MapBloc extends Bloc<MapEvent, MapState> {
   final LocationRepository locationRepository;
+  StreamSubscription<LatLng>? _locationSubscription;
 
   MapBloc({
     required this.locationRepository,
@@ -15,6 +17,11 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<MapLoad>(_onMapLoad);
     on<UpdateCameraPosition>(_onUpdateCameraPosition);
     on<MoveToCurrentLocation>(_onMoveToCurrentLocation);
+
+    // Subscribe to continuous location updates:
+    _locationSubscription = locationRepository.trackLocationUpdates().listen((latLng) {
+      add(UpdateCameraPosition(latLng));
+    });
   }
 
   Future<void> _onMapLoad(MapLoad event, Emitter<MapState> emit) async {
@@ -31,15 +38,13 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     }
   }
 
-  void _onUpdateCameraPosition(
-      UpdateCameraPosition event, Emitter<MapState> emit) {
+  void _onUpdateCameraPosition(UpdateCameraPosition event, Emitter<MapState> emit) {
     if (state is MapLoaded) {
       emit(MapLoaded(position: event.position));
     }
   }
 
-  Future<void> _onMoveToCurrentLocation(
-      MoveToCurrentLocation event, Emitter<MapState> emit) async {
+  Future<void> _onMoveToCurrentLocation(MoveToCurrentLocation event, Emitter<MapState> emit) async {
     if (state is MapLoaded) {
       try {
         final LatLng? position = await locationRepository.getCurrentLocation();
@@ -50,5 +55,11 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         emit(MapError('Failed to fetch current location: ${e.toString()}'));
       }
     }
+  }
+
+  @override
+  Future<void> close() {
+    _locationSubscription?.cancel();
+    return super.close();
   }
 }
