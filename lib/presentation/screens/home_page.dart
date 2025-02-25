@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pttms/blocs/map_bloc/map_bloc.dart';
-import 'package:pttms/blocs/route_tracking_bloc/route_tracking_bloc_bloc.dart';
+import 'package:pttms/blocs/route_tracking_bloc/route_tracking_bloc.dart';
 import 'package:pttms/presentation/widgets/google_maps_widget.dart';
 
 class HomePage extends StatelessWidget {
@@ -10,9 +10,9 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: BlocBuilder<RouteTrackingBlocBloc, RouteTrackingBlocState>(
+      body: BlocBuilder<RouteTrackingBloc, RouteTrackingState>(
         builder: (context, routeState) {
-          // Use the showPolyline from route tracking state, defaulting to true.
+          // Use the showPolyline flag from RouteTrackingBloc state, defaulting to true.
           bool showPolyline = true;
           if (routeState is RouteTrackingLoaded) {
             showPolyline = routeState.showPolyline;
@@ -20,7 +20,7 @@ class HomePage extends StatelessWidget {
           return GoogleMapsWidget(showPolyline: showPolyline);
         },
       ),
-      floatingActionButton: BlocBuilder<RouteTrackingBlocBloc, RouteTrackingBlocState>(
+      floatingActionButton: BlocBuilder<RouteTrackingBloc, RouteTrackingState>(
         builder: (context, routeState) {
           List<Widget> buttons = [
             // Button to update current location using MapBloc.
@@ -40,7 +40,7 @@ class HomePage extends StatelessWidget {
               FloatingActionButton(
                 heroTag: 'togglePolyline',
                 onPressed: () {
-                  context.read<RouteTrackingBlocBloc>().add(ToggleRoutePolyline());
+                  context.read<RouteTrackingBloc>().add(ToggleRoutePolyline());
                 },
                 child: Icon(
                   routeState.showPolyline ? Icons.visibility : Icons.visibility_off,

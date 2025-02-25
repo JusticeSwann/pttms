@@ -1,55 +1,39 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pttms/blocs/map_bloc/map_bloc.dart';
-import 'package:pttms/blocs/route_tracking_bloc/route_tracking_bloc_bloc.dart';
+import 'package:pttms/blocs/route_tracking_bloc/route_tracking_bloc.dart';
 
-class GoogleMapsWidget extends StatefulWidget {
-  final bool showPolyline;  // Added parameter
+class GoogleMapsWidget extends StatelessWidget {
+  final bool showPolyline;
+  final Completer<GoogleMapController> _controller = Completer();
 
-  const GoogleMapsWidget({
+  GoogleMapsWidget({
     super.key,
     required this.showPolyline,
   });
   
   @override
-  State<GoogleMapsWidget> createState() => _GoogleMapsWidgetState();
-}
-
-class _GoogleMapsWidgetState extends State<GoogleMapsWidget> {
-  GoogleMapController? _mapController;
-  
-  @override
-  void initState() {
-    super.initState();
-    // Dispatch initial event to load the map's current location.
-    context.read<MapBloc>().add(MapLoad());
-  }
-  
-  void _onMapCreated(GoogleMapController controller) {
-    _mapController = controller;
-  }
-  
-  @override
   Widget build(BuildContext context) {
     return MultiBlocListener(
       listeners: [
-        // Listen to MapBloc for camera updates and to trigger route tracking.
+        // Listen to MapBloc for camera updates and trigger route tracking.
         BlocListener<MapBloc, MapState>(
-          listener: (context, mapState) {
-            if (mapState is MapLoaded && _mapController != null) {
-              _mapController!.animateCamera(
+          listener: (context, mapState) async {
+            if (mapState is MapLoaded) {
+              final controller = await _controller.future;
+              controller.animateCamera(
                 CameraUpdate.newLatLng(mapState.position),
               );
-              // Update route tracking with the current position.
               context
-                  .read<RouteTrackingBlocBloc>()
+                  .read<RouteTrackingBloc>()
                   .add(UpdateRouteTracking(mapState.position));
             }
           },
         ),
-        // Optionally, listen to RouteTrackingBloc for errors.
-        BlocListener<RouteTrackingBlocBloc, RouteTrackingBlocState>(
+        // Optionally listen to RouteTrackingBloc for errors.
+        BlocListener<RouteTrackingBloc, RouteTrackingState>(
           listener: (context, routeState) {
             if (routeState is RouteTrackingError) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -64,9 +48,9 @@ class _GoogleMapsWidgetState extends State<GoogleMapsWidget> {
           if (mapState is MapLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (mapState is MapLoaded) {
-            return BlocBuilder<RouteTrackingBlocBloc, RouteTrackingBlocState>(
+            return BlocBuilder<RouteTrackingBloc, RouteTrackingState>(
               builder: (context, routeState) {
-                // Prepare polyline and status text based on route tracking state.
+                // Prepare polylines and status text based on route tracking state.
                 Set<Polyline> polylines = {};
                 String routeStatusText = 'No route data available';
                 if (routeState is RouteTrackingLoaded) {
@@ -77,8 +61,7 @@ class _GoogleMapsWidgetState extends State<GoogleMapsWidget> {
                   } else {
                     routeStatusText = 'Off Route: ${routeState.routeName}';
                   }
-                  // Use widget.showPolyline here
-                  if (routeState.isOnRoute && widget.showPolyline) {
+                  if (routeState.isOnRoute && showPolyline) {
                     polylines = {
                       Polyline(
                         polylineId: const PolylineId('detectedRoute'),
@@ -92,7 +75,11 @@ class _GoogleMapsWidgetState extends State<GoogleMapsWidget> {
                 return Stack(
                   children: [
                     GoogleMap(
-                      onMapCreated: _onMapCreated,
+                      onMapCreated: (GoogleMapController controller) {
+                        if (!_controller.isCompleted) {
+                          _controller.complete(controller);
+                        }
+                      },
                       initialCameraPosition: CameraPosition(
                         target: mapState.position,
                         zoom: 15,
