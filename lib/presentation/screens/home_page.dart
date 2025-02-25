@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pttms/blocs/map_bloc/map_bloc.dart';
+import 'package:pttms/blocs/route_tracking_bloc/route_tracking_bloc_bloc.dart';
 import 'package:pttms/presentation/widgets/google_maps_widget.dart';
 
 class HomePage extends StatelessWidget {
@@ -9,18 +10,20 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: BlocBuilder<MapBloc, MapState>(
-        builder: (context, state) {
+      body: BlocBuilder<RouteTrackingBlocBloc, RouteTrackingBlocState>(
+        builder: (context, routeState) {
+          // Use the showPolyline from route tracking state, defaulting to true.
           bool showPolyline = true;
-          if (state is MapLoadedWithRoute) {
-            showPolyline = state.showPolyline;
+          if (routeState is RouteTrackingLoaded) {
+            showPolyline = routeState.showPolyline;
           }
           return GoogleMapsWidget(showPolyline: showPolyline);
         },
       ),
-      floatingActionButton: BlocBuilder<MapBloc, MapState>(
-        builder: (context, state) {
+      floatingActionButton: BlocBuilder<RouteTrackingBlocBloc, RouteTrackingBlocState>(
+        builder: (context, routeState) {
           List<Widget> buttons = [
+            // Button to update current location using MapBloc.
             FloatingActionButton(
               heroTag: 'currentLocation',
               onPressed: () {
@@ -30,16 +33,17 @@ class HomePage extends StatelessWidget {
             ),
           ];
           
-          if (state is MapLoadedWithRoute && state.isOnRoute) {
+          // Show the polyline toggle only if the user is on a route.
+          if (routeState is RouteTrackingLoaded && routeState.isOnRoute) {
             buttons.add(const SizedBox(height: 10));
             buttons.add(
               FloatingActionButton(
                 heroTag: 'togglePolyline',
                 onPressed: () {
-                  context.read<MapBloc>().add(TogglePolyline());
+                  context.read<RouteTrackingBlocBloc>().add(ToggleRoutePolyline());
                 },
                 child: Icon(
-                  state.showPolyline ? Icons.visibility : Icons.visibility_off,
+                  routeState.showPolyline ? Icons.visibility : Icons.visibility_off,
                 ),
               ),
             );

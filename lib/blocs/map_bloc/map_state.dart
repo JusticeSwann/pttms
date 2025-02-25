@@ -11,24 +11,13 @@ class MapInitial extends MapState {}
 
 class MapLoading extends MapState {}
 
-/// Modified state to include a [showPolyline] flag.
-class MapLoadedWithRoute extends MapState {
+class MapLoaded extends MapState {
   final LatLng position;
-  final String? routeName;
-  final bool isOnRoute;
-  final List<LatLng> routePolyline;
-  final bool showPolyline;
 
-  const MapLoadedWithRoute({
-    required this.position,
-    this.routeName,
-    required this.isOnRoute,
-    required this.routePolyline,
-    this.showPolyline = true,
-  });
+  const MapLoaded({required this.position});
 
   @override
-  List<Object> get props => [position, routeName ?? '', isOnRoute, routePolyline, showPolyline];
+  List<Object> get props => [position];
 }
 
 class MapError extends MapState {
