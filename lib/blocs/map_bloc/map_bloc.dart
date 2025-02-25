@@ -18,11 +18,11 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<MapLoad>(_onMapLoad);
     on<UpdateCameraPosition>(_onUpdateCameraPosition);
     on<MoveToCurrentLocation>(_onMoveToCurrentLocation);
+    on<TogglePolyline>(_onTogglePolyline); 
   }
 
   Future<void> _onMapLoad(MapLoad event, Emitter<MapState> emit) async {
     emit(MapLoading());
-
     try {
       final LatLng? position = await locationRepository.getCurrentLocation();
 
@@ -31,9 +31,15 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       } else {
         final String? routeName = await routesRepository.getNearbyRoute(position);
         final bool isOnRoute = routesRepository.isPositionNearRoute(position);
-        final List<LatLng> routePolyline = routesRepository.getDetectedRoutePolyline(); // ✅ Get route polyline
+        final List<LatLng> routePolyline = routesRepository.getDetectedRoutePolyline();
 
-        emit(MapLoadedWithRoute(position, routeName, isOnRoute, routePolyline));
+        emit(MapLoadedWithRoute(
+          position: position,
+          routeName: routeName,
+          isOnRoute: isOnRoute,
+          routePolyline: routePolyline,
+          showPolyline: true, 
+        ));
       }
     } catch (e) {
       emit(MapError('Failed to load map: ${e.toString()}'));
@@ -47,10 +53,11 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       final bool isOnRoute = routesRepository.isPositionNearRoute(event.position);
 
       emit(MapLoadedWithRoute(
-        event.position, 
-        currentState.routeName, 
-        isOnRoute, 
-        currentState.routePolyline // ✅ Keep the existing polyline
+        position: event.position,
+        routeName: currentState.routeName,
+        isOnRoute: isOnRoute,
+        routePolyline: currentState.routePolyline,
+        showPolyline: currentState.showPolyline,
       ));
     }
   }
@@ -63,13 +70,32 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         if (position != null) {
           final String? routeName = await routesRepository.getNearbyRoute(position);
           final bool isOnRoute = routesRepository.isPositionNearRoute(position);
-          final List<LatLng> routePolyline = routesRepository.getDetectedRoutePolyline(); // ✅ Get new polyline
+          final List<LatLng> routePolyline = routesRepository.getDetectedRoutePolyline();
 
-          emit(MapLoadedWithRoute(position, routeName, isOnRoute, routePolyline));
+          emit(MapLoadedWithRoute(
+            position: position,
+            routeName: routeName,
+            isOnRoute: isOnRoute,
+            routePolyline: routePolyline,
+            showPolyline: (state as MapLoadedWithRoute).showPolyline,
+          ));
         }
       } catch (e) {
         emit(MapError('Failed to fetch current location: ${e.toString()}'));
       }
+    }
+  }
+
+  void _onTogglePolyline(TogglePolyline event, Emitter<MapState> emit) {
+    if (state is MapLoadedWithRoute) {
+      final currentState = state as MapLoadedWithRoute;
+      emit(MapLoadedWithRoute(
+        position: currentState.position,
+        routeName: currentState.routeName,
+        isOnRoute: currentState.isOnRoute,
+        routePolyline: currentState.routePolyline,
+        showPolyline: !currentState.showPolyline,
+      ));
     }
   }
 }

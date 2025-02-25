@@ -62,3 +62,6 @@ class UploadVehicleTrackingData extends MapEvent {
         pickupPoint
       ];
 }
+
+// New event to toggle polyline visibility
+class TogglePolyline extends MapEvent {}
