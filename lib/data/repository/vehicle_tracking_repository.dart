@@ -19,8 +19,18 @@ class VehicleTrackingRepository {
     required List<LatLng> routeTrace,
     required List<LatLng> stopsMade,
     required LatLng pickupPoint,
+    required bool userOnRoute, // Label for ML.
+    required double gpsAccuracy, // New: GPS Accuracy in meters.
+    required double distanceTraveled, // New: Distance traveled in meters.
+    required bool weekendIndicator, // New: true if weekend.
+    required String weatherConditions, // New: Weather description.
+    required String trafficConditions, // New: Traffic condition.
   }) async {
     try {
+      final now = DateTime.now().toUtc();
+      final dayOfWeek = now.weekday; // 1 (Monday) to 7 (Sunday)
+      final timeOfDay = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
       final data = {
         'device_id': deviceId,
         'route_id': routeId,
@@ -29,20 +39,35 @@ class VehicleTrackingRepository {
         'waiting_time': waitingTime,
         'speed': speed,
         'status': status,
-        'timestamp': DateTime.now().toUtc().toIso8601String(),
+        'timestamp': now.toIso8601String(),
+        'day_of_week': dayOfWeek,
+        'time_of_day': timeOfDay,
         'last_location': {
           'lat': lastLocation.latitude,
           'lng': lastLocation.longitude,
         },
-        'route_trace': routeTrace.map((loc) => {'lat': loc.latitude, 'lng': loc.longitude}).toList(),
-        'stops_made': stopsMade.map((loc) => {'lat': loc.latitude, 'lng': loc.longitude}).toList(),
+        'route_trace': routeTrace
+            .map((loc) => {'lat': loc.latitude, 'lng': loc.longitude})
+            .toList(),
+        'stops_made': stopsMade
+            .map((loc) => {'lat': loc.latitude, 'lng': loc.longitude})
+            .toList(),
         'pickup_point': {
           'lat': pickupPoint.latitude,
           'lng': pickupPoint.longitude,
         },
+        'user_on_route': userOnRoute,
+        'gps_accuracy': gpsAccuracy,
+        'distance_traveled': distanceTraveled,
+        'weekend_indicator': weekendIndicator,
+        'weather_conditions': weatherConditions,
+        'traffic_conditions': trafficConditions,
       };
 
-      await _firestore.collection('vehicle_tracking').doc(deviceId).set(data, SetOptions(merge: true));
+      await _firestore
+          .collection('vehicle_tracking')
+          .doc(deviceId)
+          .set(data, SetOptions(merge: true));
       print("Data uploaded successfully!");
     } catch (e) {
       print("Error uploading data: $e");

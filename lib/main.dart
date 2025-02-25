@@ -5,6 +5,7 @@ import 'firebase_options.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 // Global instance for local notifications.
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -14,6 +15,8 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     print("Background tracking running...");
+    // In your background task, you can also check for pending updates in Hive.
+    // (Sync logic would be implemented here later.)
     return Future.value(true);
   });
 }
@@ -21,14 +24,18 @@ void callbackDispatcher() {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Hive for offline data persistence.
+  await Hive.initFlutter();
+  // Open a box for tracking updates.
+  await Hive.openBox('trackingUpdates');
+
   // Initialize Firebase.
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Request location permission.
+  // Request permissions.
   await _requestLocationPermission();
-  // Request notification permission.
   await _requestNotificationPermission();
 
   // Initialize Workmanager for background tasks.
@@ -52,7 +59,6 @@ Future<void> main() async {
       InitializationSettings(android: initializationSettingsAndroid);
   await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-  // Do not show the persistent notification here.
   runApp(const MyApp());
 }
 

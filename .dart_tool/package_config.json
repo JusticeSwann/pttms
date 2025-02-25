@@ -332,6 +332,18 @@
       "languageVersion": "3.3"
     },
     {
+      "name": "hive",
+      "rootUri": "file:///C:/Users/justi/AppData/Local/Pub/Cache/hosted/pub.dev/hive-2.2.3",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+      "name": "hive_flutter",
+      "rootUri": "file:///C:/Users/justi/AppData/Local/Pub/Cache/hosted/pub.dev/hive_flutter-1.1.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "html",
       "rootUri": "file:///C:/Users/justi/AppData/Local/Pub/Cache/hosted/pub.dev/html-0.15.4",
       "packageUri": "lib/",
@@ -462,6 +474,24 @@
       "rootUri": "file:///C:/Users/justi/AppData/Local/Pub/Cache/hosted/pub.dev/path-1.9.0",
       "packageUri": "lib/",
       "languageVersion": "3.0"
+    },
+    {
+      "name": "path_provider",
+      "rootUri": "file:///C:/Users/justi/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider-2.1.5",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "path_provider_android",
+      "rootUri": "file:///C:/Users/justi/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_android-2.2.15",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
+      "name": "path_provider_foundation",
+      "rootUri": "file:///C:/Users/justi/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_foundation-2.4.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
     },
     {
       "name": "path_provider_linux",
@@ -722,7 +752,7 @@
       "languageVersion": "3.5"
     }
   ],
-  "generated": "2025-02-25T05:22:35.575731Z",
+  "generated": "2025-02-25T12:30:03.958520Z",
   "generator": "pub",
   "generatorVersion": "3.5.3",
   "flutterRoot": "file:///C:/dev/flutter",

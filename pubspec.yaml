@@ -27,6 +27,8 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   workmanager: ^0.5.2
   firebase_messaging: ^15.2.3
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -34,9 +36,7 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   mockito: ^5.0.17
 
-
 flutter:
   uses-material-design: true
   assets:
     - assets/routes.json
-    
