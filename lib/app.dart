@@ -7,11 +7,13 @@ import 'package:pttms/blocs/route_bloc/route_bloc.dart';
 import 'package:pttms/blocs/route_tracking_bloc/route_tracking_bloc.dart';
 import 'package:pttms/data/repository/routes_repository.dart';
 import 'package:pttms/data/services/route_detection_service.dart';
+import 'package:pttms/main.dart';
 import 'package:pttms/presentation/screens/home_page.dart';
 import 'package:pttms/presentation/screens/routes_page.dart';
 import 'package:pttms/presentation/widgets/bottom_navbar_widget.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:workmanager/workmanager.dart';
 
-/// The screens you want to display in your bottom navigation.
 List<Widget> pages = [
   const HomePage(),
   const RoutesPage(),
@@ -24,7 +26,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        // Provide your repositories/services
         RepositoryProvider(create: (context) => LocationRepository()),
         RepositoryProvider(create: (context) => RouteDetectionService()),
         RepositoryProvider(
@@ -35,15 +36,13 @@ class MyApp extends StatelessWidget {
       ],
       child: MultiBlocProvider(
         providers: [
-          // Provide your blocs
           BlocProvider(create: (context) => MenuBloc()),
           BlocProvider(
             create: (context) => MapBloc(
               locationRepository: context.read<LocationRepository>(),
-            )..add(MapLoad()), // Dispatch MapLoad on creation
+            )..add(MapLoad()),
           ),
           BlocProvider(create: (context) => RouteBloc()),
-          // Provide the RouteTrackingBloc so HomePage can find it.
           BlocProvider(
             create: (context) => RouteTrackingBloc(
               routesRepository: context.read<RoutesRepository>(),
@@ -53,14 +52,23 @@ class MyApp extends StatelessWidget {
         child: MaterialApp(
           home: Scaffold(
             body: SafeArea(
-              child: BlocBuilder<MenuBloc, MenuState>(
-                builder: (context, state) {
-                  if (state is SelectedIndexState) {
-                    return pages[state.selectedIndex];
-                  }
-                  // Default to the first page if no index is selected
-                  return pages[0];
-                },
+              // Use BlocListener to handle background tracking state changes.
+              child: MultiBlocListener(
+                listeners: [
+                  BlocListener<RouteTrackingBloc, RouteTrackingState>(
+                    listener: (context, trackingState) {
+                      _handleTrackingStateChange(trackingState);
+                    },
+                  ),
+                ],
+                child: BlocBuilder<MenuBloc, MenuState>(
+                  builder: (context, state) {
+                    if (state is SelectedIndexState) {
+                      return pages[state.selectedIndex];
+                    }
+                    return pages[0];
+                  },
+                ),
               ),
             ),
             bottomNavigationBar: const BottomNavBarWidget(),
@@ -68,5 +76,22 @@ class MyApp extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _handleTrackingStateChange(RouteTrackingState state) {
+    if (state is RouteTrackingLoaded) {
+      // When tracking is active, register the background task...
+      Workmanager().registerPeriodicTask(
+        "backgroundTracking",
+        "backgroundTrackingTask",
+        frequency: const Duration(minutes: 15),
+      );
+      // ...and show the persistent notification.
+      showPersistentNotification();
+    } else {
+      // For any other state (e.g., initial, loading, or error), cancel the background task and dismiss the notification.
+      Workmanager().cancelByUniqueName("backgroundTracking");
+      flutterLocalNotificationsPlugin.cancel(0);
+    }
   }
 }

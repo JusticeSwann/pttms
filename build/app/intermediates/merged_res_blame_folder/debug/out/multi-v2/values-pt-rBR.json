@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.pttms.app-mergeDebugResources-32:/values-pt-rBR/values-pt-rBR.xml",
+            "outputFile": "com.example.pttms.app-mergeDebugResources-40:/values-pt-rBR/values-pt-rBR.xml",
             "map": [
                 {
                     "source": "C:\\Users\\justi\\.gradle\\caches\\transforms-3\\25303bfa731ad2ab17d3513b6410954f\\transformed\\core-1.13.1\\res\\values-pt-rBR\\values-pt-rBR.xml",

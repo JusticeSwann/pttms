@@ -49,5 +49,13 @@
 	<key>Wants to dispy location on map and track it.</key>
 	<string>NSLocationAlwaysAndWhenInUseUsageDescription</string>
 	<key>Wants to dispy location on map and track it.</key>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>We need your location to track your route.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need your location to track your route.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+			<string>location</string>
+</array>
 </dict>
 </plist>

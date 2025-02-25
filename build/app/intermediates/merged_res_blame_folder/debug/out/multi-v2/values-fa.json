@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.pttms.app-mergeDebugResources-32:/values-fa/values-fa.xml",
+            "outputFile": "com.example.pttms.app-mergeDebugResources-40:/values-fa/values-fa.xml",
             "map": [
                 {
                     "source": "C:\\Users\\justi\\.gradle\\caches\\transforms-3\\c0acdb96f3544722b4ad61ef1c790068\\transformed\\jetified-play-services-basement-18.3.0\\res\\values-fa\\values.xml",
