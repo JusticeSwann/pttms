@@ -1,3 +1,4 @@
+// lib/app.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:location_repository/location_repository.dart';
@@ -7,12 +8,12 @@ import 'package:pttms/blocs/route_bloc/route_bloc.dart';
 import 'package:pttms/blocs/route_tracking_bloc/route_tracking_bloc.dart';
 import 'package:pttms/data/repository/routes_repository.dart';
 import 'package:pttms/data/services/route_detection_service.dart';
-import 'package:pttms/main.dart';
 import 'package:pttms/presentation/screens/home_page.dart';
 import 'package:pttms/presentation/screens/routes_page.dart';
 import 'package:pttms/presentation/widgets/bottom_navbar_widget.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:workmanager/workmanager.dart';
+import 'package:pttms/services/notification_service.dart';
+import 'package:pttms/services/notification_service.dart' show flutterLocalNotificationsPlugin;
 
 List<Widget> pages = [
   const HomePage(),
@@ -89,9 +90,10 @@ class MyApp extends StatelessWidget {
       // ...and show the persistent notification.
       showPersistentNotification();
     } else {
-      // For any other state (e.g., initial, loading, or error), cancel the background task and dismiss the notification.
+      // For any other state, cancel the background task and dismiss the notification.
       Workmanager().cancelByUniqueName("backgroundTracking");
       flutterLocalNotificationsPlugin.cancel(0);
     }
   }
 }
+
