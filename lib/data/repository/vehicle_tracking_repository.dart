@@ -25,17 +25,23 @@ class VehicleTrackingRepository {
     required bool weekendIndicator, // True if weekend.
     required String weatherConditions, // Weather description.
     required String trafficConditions, // Traffic condition.
-    // New fields for detailed timing:
+    // New detailed timing fields:
     required DateTime startedWaiting,
     required DateTime startedTraveling,
     required DateTime stoppedTraveling,
-    required int totalCommuteTime, // Total commute time in seconds (or desired unit).
-    required int totalWaitTime, // Total waiting time in seconds (or desired unit).
+    required int totalCommuteTime, // e.g., in seconds.
+    required int totalWaitTime, // e.g., in seconds.
+    // New overall date/time of the update.
+    required DateTime dateTime,
+    // New traffic level fields:
+    required String trafficLevel, // current traffic level: low, medium, high.
+    required String averageTrafficLevel, // average traffic level at journey end.
   }) async {
     try {
-      // Optionally, you can compute dayOfWeek and timeOfDay from one of the timestamps if needed.
-      final dayOfWeek = startedTraveling.weekday; // 1 (Monday) to 7 (Sunday)
-      final timeOfDay = '${startedTraveling.hour.toString().padLeft(2, '0')}:${startedTraveling.minute.toString().padLeft(2, '0')}';
+      final now = DateTime.now().toUtc();
+      final dayOfWeek = now.weekday;
+      final timeOfDay =
+          '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
       final data = {
         'device_id': deviceId,
@@ -45,13 +51,14 @@ class VehicleTrackingRepository {
         'waiting_time': waitingTime,
         'speed': speed,
         'status': status,
-        // New timestamp fields
+        // Detailed timing fields:
         'started_waiting': startedWaiting.toIso8601String(),
         'started_traveling': startedTraveling.toIso8601String(),
         'stopped_traveling': stoppedTraveling.toIso8601String(),
-        // New aggregate timing fields
         'total_commute_time': totalCommuteTime,
         'total_wait_time': totalWaitTime,
+        // Overall update time.
+        'date_time': dateTime.toIso8601String(),
         'day_of_week': dayOfWeek,
         'time_of_day': timeOfDay,
         'last_location': {
@@ -74,6 +81,9 @@ class VehicleTrackingRepository {
         'weekend_indicator': weekendIndicator,
         'weather_conditions': weatherConditions,
         'traffic_conditions': trafficConditions,
+        // New traffic level fields:
+        'traffic_level': trafficLevel,
+        'average_traffic_level': averageTrafficLevel,
       };
 
       await _firestore

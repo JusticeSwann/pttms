@@ -6,7 +6,6 @@ import '../firebase_options.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:hive/hive.dart';
 import 'package:pttms/background/local_storage_service.dart';
 import 'package:pttms/data/repository/vehicle_tracking_repository.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -23,23 +22,23 @@ void callbackDispatcher() {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      
+
       // Initialize Hive in the background isolate.
       Hive.init('./hive_background');
-      
+
       // Open the box for tracking updates.
       await Hive.openBox('trackingUpdates');
-      
+
       // Create an instance of our local storage service.
       final localStorageService = LocalStorageService();
-      
+
       // Retrieve pending updates.
       final pendingUpdates = localStorageService.getPendingUpdates();
       print("Found ${pendingUpdates.length} pending updates for sync.");
-      
+
       // Create an instance of VehicleTrackingRepository.
       final vehicleRepo = VehicleTrackingRepository();
-      
+
       // For each update, attempt to sync to Firestore.
       for (var update in pendingUpdates) {
         try {
@@ -71,27 +70,30 @@ void callbackDispatcher() {
             weekendIndicator: update['weekend_indicator'],
             weatherConditions: update['weather_conditions'],
             trafficConditions: update['traffic_conditions'],
-            // New fields:
+            // New detailed timing fields:
             startedWaiting: DateTime.parse(update['started_waiting']),
             startedTraveling: DateTime.parse(update['started_traveling']),
             stoppedTraveling: DateTime.parse(update['stopped_traveling']),
             totalCommuteTime: update['total_commute_time'],
             totalWaitTime: update['total_wait_time'],
+            // New overall date/time field:
+            dateTime: DateTime.parse(update['date_time']),
+            // New traffic level fields:
+            trafficLevel: update['traffic_level'],
+            averageTrafficLevel: update['average_traffic_level'],
           );
           print("Successfully synced update for device: ${update['device_id']}");
-          // Optionally, remove individual update after success.
         } catch (e) {
           print("Error syncing update: $e");
-          // Optionally, log the error and leave the update for retry.
+          // Optionally, leave this update for a retry.
         }
       }
-      
+
       // For simplicity, clear all updates after processing.
       await localStorageService.clearPendingUpdates();
       print("Local pending updates cleared after sync.");
     } catch (e) {
       print("Background sync task failed: $e");
-      // Returning false will cause Workmanager to consider the task failed.
       return Future.value(false);
     }
     return Future.value(true);
@@ -120,7 +122,7 @@ Future<void> main() async {
     isInDebugMode: true, // Set to false in production.
   );
 
-  // Optionally, register a periodic background task.
+  // Register a periodic background task.
   await Workmanager().registerPeriodicTask(
     "backgroundTracking",
     "backgroundTrackingTask",

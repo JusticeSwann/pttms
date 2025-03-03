@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:location_repository/location_repository.dart';
 import 'package:pttms/blocs/map_bloc/map_bloc.dart';
 import 'package:pttms/blocs/menu_bloc/menu_bloc.dart';
+import 'package:pttms/blocs/movement_bloc/movement_bloc.dart';
 import 'package:pttms/blocs/route_bloc/route_bloc.dart';
 import 'package:pttms/blocs/route_tracking_bloc/route_tracking_bloc.dart';
 import 'package:pttms/data/repository/routes_repository.dart';
@@ -38,6 +39,7 @@ class MyApp extends StatelessWidget {
       child: MultiBlocProvider(
         providers: [
           BlocProvider(create: (context) => MenuBloc()),
+          BlocProvider(create: (context) => MovementBloc()),
           BlocProvider(
             create: (context) => MapBloc(
               locationRepository: context.read<LocationRepository>(),
