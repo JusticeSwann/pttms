@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pttms/app.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../firebase_options.dart';
@@ -23,10 +24,7 @@ void callbackDispatcher() {
         options: DefaultFirebaseOptions.currentPlatform,
       );
       
-      // Initialize Hive. Note: In background isolates, you might need to call Hive.init,
-      // but if you already used Hive.initFlutter() in main(), this may work fine.
-      // Here, we'll call Hive.init to be sure.
-      // (You may need to adjust the storage path if issues arise.)
+      // Initialize Hive in the background isolate.
       Hive.init('./hive_background');
       
       // Open the box for tracking updates.
@@ -73,13 +71,18 @@ void callbackDispatcher() {
             weekendIndicator: update['weekend_indicator'],
             weatherConditions: update['weather_conditions'],
             trafficConditions: update['traffic_conditions'],
+            // New fields:
+            startedWaiting: DateTime.parse(update['started_waiting']),
+            startedTraveling: DateTime.parse(update['started_traveling']),
+            stoppedTraveling: DateTime.parse(update['stopped_traveling']),
+            totalCommuteTime: update['total_commute_time'],
+            totalWaitTime: update['total_wait_time'],
           );
           print("Successfully synced update for device: ${update['device_id']}");
-          // In a real implementation, you might remove only this update.
-          // For simplicity, we clear all updates at the end.
+          // Optionally, remove individual update after success.
         } catch (e) {
           print("Error syncing update: $e");
-          // Optionally, log and leave this update for retry.
+          // Optionally, log the error and leave the update for retry.
         }
       }
       
@@ -99,13 +102,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Hive using HiveFlutter in the main isolate.
-  // (This has already been set up to open our trackingUpdates box.)
-  // Note: The background isolate will have its own initialization.
-  // For the main app, we use Hive.initFlutter().
-  // If you haven't already done so, you can call:
-  // await Hive.initFlutter();
-  // and then open the box:
-  // await Hive.openBox('trackingUpdates');
+  await Hive.initFlutter();
+  await Hive.openBox('trackingUpdates');
 
   // Initialize Firebase.
   await Firebase.initializeApp(

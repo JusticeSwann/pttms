@@ -20,16 +20,22 @@ class VehicleTrackingRepository {
     required List<LatLng> stopsMade,
     required LatLng pickupPoint,
     required bool userOnRoute, // Label for ML.
-    required double gpsAccuracy, // New: GPS Accuracy in meters.
-    required double distanceTraveled, // New: Distance traveled in meters.
-    required bool weekendIndicator, // New: true if weekend.
-    required String weatherConditions, // New: Weather description.
-    required String trafficConditions, // New: Traffic condition.
+    required double gpsAccuracy, // GPS Accuracy in meters.
+    required double distanceTraveled, // Distance traveled in meters.
+    required bool weekendIndicator, // True if weekend.
+    required String weatherConditions, // Weather description.
+    required String trafficConditions, // Traffic condition.
+    // New fields for detailed timing:
+    required DateTime startedWaiting,
+    required DateTime startedTraveling,
+    required DateTime stoppedTraveling,
+    required int totalCommuteTime, // Total commute time in seconds (or desired unit).
+    required int totalWaitTime, // Total waiting time in seconds (or desired unit).
   }) async {
     try {
-      final now = DateTime.now().toUtc();
-      final dayOfWeek = now.weekday; // 1 (Monday) to 7 (Sunday)
-      final timeOfDay = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+      // Optionally, you can compute dayOfWeek and timeOfDay from one of the timestamps if needed.
+      final dayOfWeek = startedTraveling.weekday; // 1 (Monday) to 7 (Sunday)
+      final timeOfDay = '${startedTraveling.hour.toString().padLeft(2, '0')}:${startedTraveling.minute.toString().padLeft(2, '0')}';
 
       final data = {
         'device_id': deviceId,
@@ -39,7 +45,13 @@ class VehicleTrackingRepository {
         'waiting_time': waitingTime,
         'speed': speed,
         'status': status,
-        'timestamp': now.toIso8601String(),
+        // New timestamp fields
+        'started_waiting': startedWaiting.toIso8601String(),
+        'started_traveling': startedTraveling.toIso8601String(),
+        'stopped_traveling': stoppedTraveling.toIso8601String(),
+        // New aggregate timing fields
+        'total_commute_time': totalCommuteTime,
+        'total_wait_time': totalWaitTime,
         'day_of_week': dayOfWeek,
         'time_of_day': timeOfDay,
         'last_location': {
