@@ -2,16 +2,44 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:pttms/blocs/movement_bloc/movement_bloc.dart';
 import 'package:pttms/blocs/movement_bloc/movement_event.dart';
 import 'package:pttms/blocs/movement_bloc/movement_state.dart';
+import 'package:pttms/services/traffic_service.dart';
+
+/// A Fake implementation of TrafficService for testing purposes.
+class FakeTrafficService extends Fake implements TrafficService {
+  @override
+  Future<Map<String, dynamic>> fetchTrafficData({
+    required LatLng origin,
+    required LatLng destination,
+    required int departureTime,
+  }) async {
+    // Return stubbed data.
+    return {
+      'raw_duration': 100,
+      'traffic_duration': 120,
+    };
+  }
+
+  @override
+  String determineTrafficLevel({
+    required int rawDuration,
+    required int trafficDuration,
+  }) {
+    return 'low';
+  }
+}
 
 void main() {
   group('MovementBloc Tests', () {
     late MovementBloc movementBloc;
+    late FakeTrafficService fakeTrafficService;
 
     setUp(() {
-      movementBloc = MovementBloc();
+      fakeTrafficService = FakeTrafficService();
+      movementBloc = MovementBloc(trafficService: fakeTrafficService);
     });
 
     tearDown(() {
@@ -48,12 +76,11 @@ void main() {
       ),
       act: (bloc) => bloc.add(UpdateLocation(
         newLocation: const LatLng(10.0, 20.0),
-        speed: 16.0, // speed above threshold (15 km/h)
+        speed: 16.0, // above threshold
         onRoute: true,
         isWalking: false,
       )),
       expect: () => [
-        // Expecting a MovementActive state.
         isA<MovementActive>(),
       ],
       verify: (bloc) {
@@ -79,7 +106,7 @@ void main() {
       expect: () => [
         MovementWaiting(
           startedWaiting: DateTime(2023, 1, 1, 12, 0, 0),
-          waitingTime: 5, // incremented by 5 seconds
+          waitingTime: 5,
         ),
       ],
     );

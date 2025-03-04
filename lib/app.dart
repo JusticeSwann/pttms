@@ -12,6 +12,7 @@ import 'package:pttms/data/services/route_detection_service.dart';
 import 'package:pttms/presentation/screens/home_page.dart';
 import 'package:pttms/presentation/screens/routes_page.dart';
 import 'package:pttms/presentation/widgets/bottom_navbar_widget.dart';
+import 'package:pttms/services/traffic_service.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:pttms/services/notification_service.dart';
 import 'package:pttms/services/notification_service.dart' show flutterLocalNotificationsPlugin;
@@ -29,6 +30,11 @@ class MyApp extends StatelessWidget {
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider(create: (context) => LocationRepository()),
+        RepositoryProvider(
+          create: (context) => TrafficService(
+            apiKey: 'AIzaSyDWXUUCtOR2DrjjWfE4NFCLUq5ED1f6evU',
+          ),
+        ),
         RepositoryProvider(create: (context) => RouteDetectionService()),
         RepositoryProvider(
           create: (context) => RoutesRepository(
@@ -39,7 +45,12 @@ class MyApp extends StatelessWidget {
       child: MultiBlocProvider(
         providers: [
           BlocProvider(create: (context) => MenuBloc()),
-          BlocProvider(create: (context) => MovementBloc()),
+          // Pass the TrafficService to MovementBloc:
+          BlocProvider(
+            create: (context) => MovementBloc(
+              trafficService: context.read<TrafficService>(),
+            ),
+          ),
           BlocProvider(
             create: (context) => MapBloc(
               locationRepository: context.read<LocationRepository>(),
@@ -55,7 +66,6 @@ class MyApp extends StatelessWidget {
         child: MaterialApp(
           home: Scaffold(
             body: SafeArea(
-              // Use BlocListener to handle background tracking state changes.
               child: MultiBlocListener(
                 listeners: [
                   BlocListener<RouteTrackingBloc, RouteTrackingState>(
@@ -98,4 +108,3 @@ class MyApp extends StatelessWidget {
     }
   }
 }
-

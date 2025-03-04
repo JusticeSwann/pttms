@@ -80,3 +80,18 @@ class MarkFalsePositive extends MovementEvent {
 class StopTrackingImmediately extends MovementEvent {
   const StopTrackingImmediately();
 }
+
+/// Dispatch when you want to update traffic data. 
+/// The MovementBloc can fetch traffic info for [origin] to [destination].
+class UpdateTrafficData extends MovementEvent {
+  final LatLng origin;
+  final LatLng destination;
+
+  const UpdateTrafficData({
+    required this.origin,
+    required this.destination,
+  });
+
+  @override
+  List<Object?> get props => [origin, destination];
+}
