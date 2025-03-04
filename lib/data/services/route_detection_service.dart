@@ -10,7 +10,9 @@ class RouteDetectionService {
   Future<List<Map<String, dynamic>>> loadRoutesFromJson() async {
     final String response = await rootBundle.loadString('assets/routes.json');
     final data = json.decode(response) as Map<String, dynamic>;
-    return (data['routes'] as List).map((e) => e as Map<String, dynamic>).toList();
+    return (data['routes'] as List)
+        .map((e) => e as Map<String, dynamic>)
+        .toList();
   }
 
   Future<String?> findNearbyRoutes(LatLng position) async {
@@ -64,6 +66,26 @@ class RouteDetectionService {
         return false;
       }
     });
+  }
+
+  /// New method: returns both raw and traffic-adjusted minimum distances (in meters)
+  /// from the given position to the last detected route polyline.
+  Future<Map<String, double>> getDualDistances(LatLng position, {String trafficLevel = 'low'}) async {
+    if (_lastDetectedRoutePolyline.isEmpty) {
+      return {'rawDistance': double.infinity, 'trafficDistance': double.infinity};
+    }
+    double rawDistance = _calculateMinDistanceToRoute(position, _lastDetectedRoutePolyline);
+    double multiplier = 1.0;
+    if (trafficLevel == 'medium') {
+      multiplier = 0.9;
+    } else if (trafficLevel == 'high') {
+      multiplier = 0.8;
+    }
+    double trafficDistance = rawDistance * multiplier;
+    return {
+      'rawDistance': rawDistance,
+      'trafficDistance': trafficDistance,
+    };
   }
 
   double _calculateMinDistanceToRoute(LatLng position, List<LatLng> polyline) {

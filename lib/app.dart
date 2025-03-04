@@ -31,9 +31,7 @@ class MyApp extends StatelessWidget {
       providers: [
         RepositoryProvider(create: (context) => LocationRepository()),
         RepositoryProvider(
-          create: (context) => TrafficService(
-            apiKey: 'AIzaSyDWXUUCtOR2DrjjWfE4NFCLUq5ED1f6evU',
-          ),
+          create: (context) => TrafficService(apiKey: 'YOUR_GOOGLE_API_KEY_HERE'),
         ),
         RepositoryProvider(create: (context) => RouteDetectionService()),
         RepositoryProvider(
@@ -45,10 +43,10 @@ class MyApp extends StatelessWidget {
       child: MultiBlocProvider(
         providers: [
           BlocProvider(create: (context) => MenuBloc()),
-          // Pass the TrafficService to MovementBloc:
           BlocProvider(
             create: (context) => MovementBloc(
               trafficService: context.read<TrafficService>(),
+              routeDetectionService: context.read<RouteDetectionService>(),
             ),
           ),
           BlocProvider(
@@ -93,16 +91,13 @@ class MyApp extends StatelessWidget {
 
   void _handleTrackingStateChange(RouteTrackingState state) {
     if (state is RouteTrackingLoaded) {
-      // When tracking is active, register the background task...
       Workmanager().registerPeriodicTask(
         "backgroundTracking",
         "backgroundTrackingTask",
         frequency: const Duration(minutes: 15),
       );
-      // ...and show the persistent notification.
       showPersistentNotification();
     } else {
-      // For any other state, cancel the background task and dismiss the notification.
       Workmanager().cancelByUniqueName("backgroundTracking");
       flutterLocalNotificationsPlugin.cancel(0);
     }

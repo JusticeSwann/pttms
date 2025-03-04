@@ -1,31 +1,37 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:bloc/bloc.dart';
-import 'package:equatable/equatable.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'movement_event.dart';
 import 'movement_state.dart';
-import 'package:pttms/services/traffic_service.dart'; // Import your TrafficService
+import 'package:pttms/services/traffic_service.dart';
+import 'package:pttms/data/services/route_detection_service.dart';
 
 /// This bloc manages transitions between waiting, active, complete, and false positive states.
-/// It now also integrates traffic data updates.
+/// It now integrates traffic data updates and enhanced off-route detection.
 class MovementBloc extends Bloc<MovementEvent, MovementState> {
   Timer? _waitingTimer;
   Timer? _activeTimer;
   Timer? _trafficTimer;
-  
-  // Injected TrafficService dependency.
+  Timer? _offRouteTimer; // Timer for off-route detection
+
   final TrafficService trafficService;
+  final RouteDetectionService routeDetectionService;
+  final Duration offRouteDuration; // Configurable off-route duration
 
   // To accumulate traffic data over the journey.
   final List<String> _trafficLevels = [];
-  String _currentTrafficLevel = 'low'; // Default traffic level
+  String _currentTrafficLevel = 'low';
 
   // Optional: store origin (e.g., route start) and current location.
   LatLng? _origin;
   LatLng? _currentLocation;
 
-  MovementBloc({required this.trafficService}) : super(const MovementInitial()) {
+  MovementBloc({
+    required this.trafficService,
+    required this.routeDetectionService,
+    this.offRouteDuration = const Duration(minutes: 10),
+  }) : super(const MovementInitial()) {
     on<InitializeWaiting>(_onInitializeWaiting);
     on<UpdateLocation>(_onUpdateLocation);
     on<TransitionToActive>(_onTransitionToActive);
@@ -39,9 +45,8 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
     InitializeWaiting event,
     Emitter<MovementState> emit,
   ) {
-    // Optionally, set _origin based on event data if available.
-    // For example, you might pass the route's starting point in the event.
-    _origin ??= event.startedWaiting != null ? const LatLng(0, 0) : null; // Replace with actual value.
+    // Optionally set _origin based on event data.
+    _origin ??= const LatLng(0, 0); // Replace with actual value if available.
     emit(
       MovementWaiting(
         startedWaiting: event.startedWaiting,
@@ -53,37 +58,47 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
   void _onUpdateLocation(
     UpdateLocation event,
     Emitter<MovementState> emit,
-  ) {
-    // Always update current location.
+  ) async {
     _currentLocation = event.newLocation;
-
     final currentState = state;
 
     if (currentState is MovementWaiting) {
-      // Check if speed exceeds threshold => Transition to Active.
-      // (You can adjust threshold based on _currentTrafficLevel if desired.)
-      if (event.speed > 15.0 /* default or dynamic based on _currentTrafficLevel */) {
+      if (event.speed > 15.0) {
         add(TransitionToActive(DateTime.now()));
       } else {
-        // Increment waiting time by 5 seconds.
         final updatedWaitingTime = currentState.waitingTime + 5;
         emit(currentState.copyWith(waitingTime: updatedWaitingTime));
       }
     } else if (currentState is MovementActive) {
-      // Off-route detection logic can be inserted here.
+      // --- Enhanced Off-Route Detection ---
       if (!event.onRoute) {
-        // Start or check a timer for 10 min off-route condition (not fully implemented here).
+        final dualDistances = await routeDetectionService.getDualDistances(
+          event.newLocation,
+          trafficLevel: _currentTrafficLevel,
+        );
+        // If either computed distance exceeds 30 meters, start the off-route timer.
+        if (dualDistances['rawDistance']! > 30 || dualDistances['trafficDistance']! > 30) {
+          _offRouteTimer ??= Timer(offRouteDuration, () {
+            add(MarkFalsePositive("Off-route for ${offRouteDuration.inMinutes} minutes"));
+          });
+        } else {
+          // User is close enough; cancel any off-route timer.
+          _offRouteTimer?.cancel();
+          _offRouteTimer = null;
+        }
+      } else {
+        _offRouteTimer?.cancel();
+        _offRouteTimer = null;
       }
-      // If speed is low and user is walking => MarkComplete.
+      // ---------------------------------------
+
       if (event.speed < 5.0 && event.isWalking) {
         add(MarkComplete(DateTime.now()));
         return;
       }
-      // Otherwise, increment activeTime.
+
       final newActiveTime = currentState.activeTime + 5;
       final routeTrace = List<Map<String, double>>.from(currentState.routeTrace);
-
-      // Append new location if moved at least 5 meters from the last point.
       if (routeTrace.isEmpty) {
         routeTrace.add({
           'lat': event.newLocation.latitude,
@@ -102,11 +117,8 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
             'lat': event.newLocation.latitude,
             'lng': event.newLocation.longitude,
           });
-        } else {
-          // If the location is the same, record a stop instead (logic for stops can be added here).
         }
       }
-
       emit(
         MovementActive(
           startedTraveling: currentState.startedTraveling,
@@ -124,14 +136,12 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
   ) {
     final currentState = state;
     if (currentState is MovementWaiting) {
-      // When transitioning, start a traffic update timer.
       _trafficTimer?.cancel();
       _trafficTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
         if (_origin != null && _currentLocation != null) {
           add(UpdateTrafficData(origin: _origin!, destination: _currentLocation!));
         }
       });
-      // Immediately trigger a traffic update if possible.
       if (_origin != null && _currentLocation != null) {
         add(UpdateTrafficData(origin: _origin!, destination: _currentLocation!));
       }
@@ -164,7 +174,6 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
       _currentTrafficLevel = newTrafficLevel;
       _trafficLevels.add(newTrafficLevel);
       print("Updated traffic level: $newTrafficLevel");
-      // Optionally, update state with current traffic info.
     } catch (e) {
       print("Error updating traffic data: $e");
     }
@@ -176,8 +185,7 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
   ) {
     final currentState = state;
     if (currentState is MovementActive) {
-      final totalCommuteTime = currentState.activeTime; // + waitingTime if needed.
-      // Compute average traffic level.
+      final totalCommuteTime = currentState.activeTime;
       String averageTrafficLevel = _computeAverageTrafficLevel();
       emit(
         MovementComplete(
@@ -187,7 +195,7 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
           stopsMade: currentState.stopsMade,
         ),
       );
-      // Trigger final upload with current traffic level and averageTrafficLevel as part of the payload.
+      // Trigger final upload with _currentTrafficLevel and averageTrafficLevel.
     }
   }
 
@@ -205,10 +213,8 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
     add(MarkFalsePositive("User stopped via notification"));
   }
 
-  // Helper: Haversine distance calculation (in meters).
-  double _calculateDistance(
-      double lat1, double lon1, double lat2, double lon2) {
-    const earthRadius = 6371000; // in meters
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const earthRadius = 6371000;
     final dLat = _degreesToRadians(lat2 - lat1);
     final dLon = _degreesToRadians(lon2 - lon1);
     final a = (dLat / 2) * (dLat / 2) +
@@ -219,7 +225,7 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
   }
 
   double _degreesToRadians(double degrees) {
-    return degrees * 3.1415926535897932 / 180;
+    return degrees * pi / 180;
   }
 
   String _computeAverageTrafficLevel() {
@@ -241,6 +247,7 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
     _waitingTimer?.cancel();
     _activeTimer?.cancel();
     _trafficTimer?.cancel();
+    _offRouteTimer?.cancel();
     return super.close();
   }
 }

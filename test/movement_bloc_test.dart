@@ -7,8 +7,9 @@ import 'package:pttms/blocs/movement_bloc/movement_bloc.dart';
 import 'package:pttms/blocs/movement_bloc/movement_event.dart';
 import 'package:pttms/blocs/movement_bloc/movement_state.dart';
 import 'package:pttms/services/traffic_service.dart';
+import 'package:pttms/data/services/route_detection_service.dart';
 
-/// A Fake implementation of TrafficService for testing purposes.
+/// A Fake implementation of TrafficService for testing.
 class FakeTrafficService extends Fake implements TrafficService {
   @override
   Future<Map<String, dynamic>> fetchTrafficData({
@@ -16,7 +17,6 @@ class FakeTrafficService extends Fake implements TrafficService {
     required LatLng destination,
     required int departureTime,
   }) async {
-    // Return stubbed data.
     return {
       'raw_duration': 100,
       'traffic_duration': 120,
@@ -32,14 +32,32 @@ class FakeTrafficService extends Fake implements TrafficService {
   }
 }
 
+/// A Fake implementation of RouteDetectionService for testing.
+class FakeRouteDetectionService extends Fake implements RouteDetectionService {
+  @override
+  Future<Map<String, double>> getDualDistances(LatLng position, {String trafficLevel = 'low'}) async {
+    // Return distances exceeding the 30-meter threshold.
+    return {
+      'rawDistance': 35.0,
+      'trafficDistance': 35.0,
+    };
+  }
+}
+
 void main() {
   group('MovementBloc Tests', () {
     late MovementBloc movementBloc;
     late FakeTrafficService fakeTrafficService;
+    late FakeRouteDetectionService fakeRouteDetectionService;
 
     setUp(() {
       fakeTrafficService = FakeTrafficService();
-      movementBloc = MovementBloc(trafficService: fakeTrafficService);
+      fakeRouteDetectionService = FakeRouteDetectionService();
+      // Default offRouteDuration can be long for other tests.
+      movementBloc = MovementBloc(
+        trafficService: fakeTrafficService,
+        routeDetectionService: fakeRouteDetectionService,
+      );
     });
 
     tearDown(() {
@@ -76,7 +94,7 @@ void main() {
       ),
       act: (bloc) => bloc.add(UpdateLocation(
         newLocation: const LatLng(10.0, 20.0),
-        speed: 16.0, // above threshold
+        speed: 16.0,
         onRoute: true,
         isWalking: false,
       )),
@@ -99,7 +117,7 @@ void main() {
       ),
       act: (bloc) => bloc.add(UpdateLocation(
         newLocation: const LatLng(10.0, 20.0),
-        speed: 10.0, // below threshold
+        speed: 10.0,
         onRoute: true,
         isWalking: false,
       )),
@@ -110,5 +128,34 @@ void main() {
         ),
       ],
     );
+
+    test('emits MovementFalsePositive after off-route duration in MovementActive state', () async {
+      // For this test, create a new MovementBloc with a short offRouteDuration.
+      final testBloc = MovementBloc(
+        trafficService: fakeTrafficService,
+        routeDetectionService: fakeRouteDetectionService,
+        offRouteDuration: const Duration(milliseconds: 100),
+      );
+      // Seed the bloc into a MovementActive state.
+      testBloc.emit(MovementActive(
+        startedTraveling: DateTime(2023, 1, 1, 12, 0, 0),
+        activeTime: 0,
+        routeTrace: [],
+        stopsMade: [],
+      ));
+
+      // Dispatch an UpdateLocation event with onRoute set to false.
+      testBloc.add(UpdateLocation(
+        newLocation: const LatLng(10.0, 20.0),
+        speed: 16.0,
+        onRoute: false,
+        isWalking: false,
+      ));
+
+      // Wait for a duration longer than the offRouteDuration.
+      await Future.delayed(const Duration(milliseconds: 200));
+      expect(testBloc.state, isA<MovementFalsePositive>());
+      await testBloc.close();
+    });
   });
 }
