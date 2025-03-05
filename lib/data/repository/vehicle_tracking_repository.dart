@@ -1,3 +1,4 @@
+// lib/data/repository/vehicle_tracking_repository.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -19,23 +20,23 @@ class VehicleTrackingRepository {
     required List<LatLng> routeTrace,
     required List<LatLng> stopsMade,
     required LatLng pickupPoint,
-    required bool userOnRoute, // Label for ML.
-    required double gpsAccuracy, // GPS Accuracy in meters.
-    required double distanceTraveled, // Distance traveled in meters.
-    required bool weekendIndicator, // True if weekend.
-    required String weatherConditions, // Weather description.
-    required String trafficConditions, // Traffic condition.
-    // New detailed timing fields:
+    required bool userOnRoute,
+    required double gpsAccuracy,
+    required double distanceTraveled,
+    required bool weekendIndicator,
+    required String weatherConditions,
+    required String trafficConditions,
+    // Detailed timing fields:
     required DateTime startedWaiting,
     required DateTime startedTraveling,
     required DateTime stoppedTraveling,
-    required int totalCommuteTime, // e.g., in seconds.
-    required int totalWaitTime, // e.g., in seconds.
-    // New overall date/time of the update.
+    required int totalCommuteTime,
+    required int totalWaitTime,
+    // Overall update time:
     required DateTime dateTime,
-    // New traffic level fields:
-    required String trafficLevel, // current traffic level: low, medium, high.
-    required String averageTrafficLevel, // average traffic level at journey end.
+    // Traffic level fields:
+    required String trafficLevel,
+    required String averageTrafficLevel,
   }) async {
     try {
       final now = DateTime.now().toUtc();
@@ -51,13 +52,11 @@ class VehicleTrackingRepository {
         'waiting_time': waitingTime,
         'speed': speed,
         'status': status,
-        // Detailed timing fields:
         'started_waiting': startedWaiting.toIso8601String(),
         'started_traveling': startedTraveling.toIso8601String(),
         'stopped_traveling': stoppedTraveling.toIso8601String(),
         'total_commute_time': totalCommuteTime,
         'total_wait_time': totalWaitTime,
-        // Overall update time.
         'date_time': dateTime.toIso8601String(),
         'day_of_week': dayOfWeek,
         'time_of_day': timeOfDay,
@@ -81,7 +80,6 @@ class VehicleTrackingRepository {
         'weekend_indicator': weekendIndicator,
         'weather_conditions': weatherConditions,
         'traffic_conditions': trafficConditions,
-        // New traffic level fields:
         'traffic_level': trafficLevel,
         'average_traffic_level': averageTrafficLevel,
       };

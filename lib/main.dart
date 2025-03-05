@@ -7,31 +7,25 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:pttms/background/callback_dispatcher.dart';
-import 'package:pttms/services/notification_service.dart'; // for initialization if needed
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Hive for offline data persistence.
+  // Initialize Hive for offline storage.
   await Hive.initFlutter();
   await Hive.openBox('trackingUpdates');
 
-  // Initialize Firebase.
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  // Request permissions.
+  // Request required permissions.
   await _requestLocationPermission();
   await _requestNotificationPermission();
 
-  // Initialize Workmanager for background tasks using the full callbackDispatcher.
+  // Initialize Workmanager for background tasks.
   await Workmanager().initialize(
-    callbackDispatcher, // Full implementation from background/callback_dispatcher.dart
-    isInDebugMode: true, // Set to false in production.
+    callbackDispatcher,
+    isInDebugMode: true, // Change to false in production.
   );
 
-  // Register a periodic background task.
+  // Register a periodic background sync task.
   await Workmanager().registerPeriodicTask(
     "backgroundTracking",
     "backgroundTrackingTask",
@@ -39,9 +33,6 @@ Future<void> main() async {
     inputData: <String, dynamic>{},
   );
 
-  // Optionally, initialize local notifications here if required.
-  // (Initialization could also occur in your notification service.)
-  
   runApp(const MyApp());
 }
 
