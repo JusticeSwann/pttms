@@ -54,6 +54,8 @@ class MyApp extends StatelessWidget {
             create: (context) => MapBloc(
               locationRepository: context.read<LocationRepository>(),
               vehicleTrackingRepository: context.read<VehicleTrackingRepository>(),
+              // Provide the routeDetectionService here:
+              routeDetectionService: context.read<RouteDetectionService>(),
             )..add(MapLoad()),
           ),
           BlocProvider(create: (context) => RouteBloc()),
