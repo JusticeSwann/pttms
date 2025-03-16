@@ -2,7 +2,6 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:pttms/blocs/movement_bloc/movement_bloc.dart';
 import 'package:pttms/blocs/movement_bloc/movement_event.dart';
 import 'package:pttms/blocs/movement_bloc/movement_state.dart';
@@ -92,8 +91,8 @@ void main() {
         startedWaiting: DateTime(2023, 1, 1, 12, 0, 0),
         waitingTime: 10,
       ),
-      act: (bloc) => bloc.add(UpdateLocation(
-        newLocation: const LatLng(10.0, 20.0),
+      act: (bloc) => bloc.add(const UpdateLocation(
+        newLocation: LatLng(10.0, 20.0),
         speed: 16.0,
         onRoute: true,
         isWalking: false,
@@ -115,8 +114,8 @@ void main() {
         startedWaiting: DateTime(2023, 1, 1, 12, 0, 0),
         waitingTime: 0,
       ),
-      act: (bloc) => bloc.add(UpdateLocation(
-        newLocation: const LatLng(10.0, 20.0),
+      act: (bloc) => bloc.add(const UpdateLocation(
+        newLocation: LatLng(10.0, 20.0),
         speed: 10.0,
         onRoute: true,
         isWalking: false,
@@ -140,13 +139,13 @@ void main() {
       testBloc.emit(MovementActive(
         startedTraveling: DateTime(2023, 1, 1, 12, 0, 0),
         activeTime: 0,
-        routeTrace: [],
-        stopsMade: [],
+        routeTrace: const [],
+        stopsMade: const [],
       ));
 
       // Dispatch an UpdateLocation event with onRoute set to false.
-      testBloc.add(UpdateLocation(
-        newLocation: const LatLng(10.0, 20.0),
+      testBloc.add(const UpdateLocation(
+        newLocation: LatLng(10.0, 20.0),
         speed: 16.0,
         onRoute: false,
         isWalking: false,

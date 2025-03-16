@@ -84,8 +84,9 @@ class VehicleTrackingRepository {
         'average_traffic_level': averageTrafficLevel,
       };
 
+      // Write to the "actor_report" collection.
       await _firestore
-          .collection('vehicle_tracking')
+          .collection('actor_report')
           .doc(deviceId)
           .set(data, SetOptions(merge: true));
       print("Data uploaded successfully!");

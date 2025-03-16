@@ -8,6 +8,7 @@ import 'package:pttms/blocs/movement_bloc/movement_bloc.dart';
 import 'package:pttms/blocs/route_bloc/route_bloc.dart';
 import 'package:pttms/blocs/route_tracking_bloc/route_tracking_bloc.dart';
 import 'package:pttms/data/repository/routes_repository.dart';
+import 'package:pttms/data/repository/vehicle_tracking_repository.dart';
 import 'package:pttms/data/services/route_detection_service.dart';
 import 'package:pttms/presentation/screens/home_page.dart';
 import 'package:pttms/presentation/screens/routes_page.dart';
@@ -15,7 +16,6 @@ import 'package:pttms/presentation/widgets/bottom_navbar_widget.dart';
 import 'package:pttms/services/traffic_service.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:pttms/services/notification_service.dart';
-import 'package:pttms/services/notification_service.dart' show flutterLocalNotificationsPlugin;
 
 List<Widget> pages = [
   const HomePage(),
@@ -30,6 +30,7 @@ class MyApp extends StatelessWidget {
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider(create: (context) => LocationRepository()),
+        RepositoryProvider(create: (context) => VehicleTrackingRepository()),
         RepositoryProvider(
           create: (context) => TrafficService(apiKey: 'YOUR_GOOGLE_API_KEY_HERE'),
         ),
@@ -52,6 +53,7 @@ class MyApp extends StatelessWidget {
           BlocProvider(
             create: (context) => MapBloc(
               locationRepository: context.read<LocationRepository>(),
+              vehicleTrackingRepository: context.read<VehicleTrackingRepository>(),
             )..add(MapLoad()),
           ),
           BlocProvider(create: (context) => RouteBloc()),

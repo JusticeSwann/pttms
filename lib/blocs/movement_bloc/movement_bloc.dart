@@ -147,8 +147,8 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
         MovementActive(
           startedTraveling: event.startedTraveling,
           activeTime: 0,
-          routeTrace: [],
-          stopsMade: [],
+          routeTrace: const [],
+          stopsMade: const [],
         ),
       );
     }
@@ -220,7 +220,7 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
     StopTrackingImmediately event,
     Emitter<MovementState> emit,
   ) {
-    add(MarkFalsePositive("User stopped via notification"));
+    add(const MarkFalsePositive("User stopped via notification"));
   }
 
   double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
@@ -242,13 +242,15 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
     if (_trafficLevels.isEmpty) return 'low';
     int total = 0;
     for (var level in _trafficLevels) {
-      if (level == 'low') total += 1;
-      else if (level == 'medium') total += 2;
+      if (level == 'low') {
+        total += 1;
+      } else if (level == 'medium') total += 2;
       else if (level == 'high') total += 3;
     }
     double avg = total / _trafficLevels.length;
-    if (avg < 1.5) return 'low';
-    else if (avg < 2.5) return 'medium';
+    if (avg < 1.5) {
+      return 'low';
+    } else if (avg < 2.5) return 'medium';
     else return 'high';
   }
 

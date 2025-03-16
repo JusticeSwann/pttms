@@ -33,6 +33,11 @@ Future<void> main() async {
     inputData: <String, dynamic>{},
   );
 
+  // Initialize Firebase using your options.
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
 }
 
