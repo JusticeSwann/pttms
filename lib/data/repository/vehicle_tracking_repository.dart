@@ -9,7 +9,7 @@ class VehicleTrackingRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   Future<void> uploadVehicleData({
-    required String docId,       // New: Document ID for Firestore.
+    required String docId,       // Document ID for Firestore.
     required String deviceId,    // The actual device name.
     required int routeId,
     required String routeName,
@@ -28,8 +28,8 @@ class VehicleTrackingRepository {
     required String weatherConditions,
     required String trafficConditions,
     required DateTime startedWaiting,
-    required DateTime startedTraveling,
-    required DateTime stoppedTraveling,
+    required DateTime? startedTraveling, // Now nullable.
+    required DateTime? stoppedTraveling, // Now nullable.
     required int totalCommuteTime,
     required int totalWaitTime,
     required DateTime dateTime,
@@ -51,8 +51,8 @@ class VehicleTrackingRepository {
         'speed': speed,
         'status': status,
         'started_waiting': startedWaiting.toIso8601String(),
-        'started_traveling': startedTraveling.toIso8601String(),
-        'stopped_traveling': stoppedTraveling.toIso8601String(),
+        'started_traveling': startedTraveling != null ? startedTraveling.toIso8601String() : null,
+        'stopped_traveling': stoppedTraveling != null ? stoppedTraveling.toIso8601String() : null,
         'total_commute_time': totalCommuteTime,
         'total_wait_time': totalWaitTime,
         'date_time': dateTime.toIso8601String(),

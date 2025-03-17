@@ -4,7 +4,7 @@ sealed class MapEvent extends Equatable {
   const MapEvent();
 
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
 class MapLoad extends MapEvent {}
@@ -15,12 +15,12 @@ class UpdateCameraPosition extends MapEvent {
   const UpdateCameraPosition(this.position);
 
   @override
-  List<Object> get props => [position];
+  List<Object?> get props => [position];
 }
 
 class MoveToCurrentLocation extends MapEvent {}
 
-/// New event for uploading vehicle tracking data
+/// Updated: startedTraveling and stoppedTraveling are now nullable.
 class UploadVehicleTrackingData extends MapEvent {
   /// The Firestore document ID (generated as deviceId_timestamp).
   final String docId;
@@ -44,9 +44,12 @@ class UploadVehicleTrackingData extends MapEvent {
   final bool weekendIndicator;
   final String weatherConditions;
   final String trafficConditions;
+
+  /// Now nullable:
   final DateTime startedWaiting;
-  final DateTime startedTraveling;
-  final DateTime stoppedTraveling;
+  final DateTime? startedTraveling; 
+  final DateTime? stoppedTraveling; 
+
   final int totalCommuteTime;
   final int totalWaitTime;
   final DateTime dateTime;
@@ -73,8 +76,8 @@ class UploadVehicleTrackingData extends MapEvent {
     required this.weatherConditions,
     required this.trafficConditions,
     required this.startedWaiting,
-    required this.startedTraveling,
-    required this.stoppedTraveling,
+    this.startedTraveling,    // <--- changed to DateTime?
+    this.stoppedTraveling,    // <--- changed to DateTime?
     required this.totalCommuteTime,
     required this.totalWaitTime,
     required this.dateTime,
@@ -83,7 +86,7 @@ class UploadVehicleTrackingData extends MapEvent {
   });
 
   @override
-  List<Object> get props => [
+  List<Object?> get props => [
         docId,
         deviceId,
         routeId,

@@ -23,22 +23,28 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   LatLng? _lastUploadedLocation; // Used to compute movement.
   String _lastStatus = "Waiting"; // Initial status.
 
+  // Time fields (set only once during the session)
+  DateTime? _initialUploadTime;   // For date_time (initial upload)
+  DateTime? _startedWaiting;      // Set on first upload when status is "waiting"
+  DateTime? _startedTraveling;    // Set only once when status first transitions to "active"
+  DateTime? _stoppedTraveling;    // Set only once when status becomes "complete"
+  String? _timeOfDay;             // Formatted string (hour only, military time) from initial upload
+
   // Additional fields for off-route and stationary conditions.
   DateTime? _offRouteStartTime;
   DateTime? _stationaryStartTime;
 
-  // Fields for route data.
+  // Route data.
   int? _routeId;
   String? _routeName;
   final List<LatLng> _routeTrace = [];
   final List<LatLng> _stopsMade = [];
 
-  // Default speed threshold in km/h for low traffic.
+  // Default thresholds.
   static const double speedThresholdKmh = 15.0;
-  // Distance threshold for adding a new point to route trace.
   static const double traceDistanceThreshold = 5.0;
 
-  // New field to store a session-based document ID.
+  // Session-based document ID.
   String? _sessionDocId;
 
   MapBloc({
@@ -67,15 +73,22 @@ class MapBloc extends Bloc<MapEvent, MapState> {
           final currentState = state as MapLoaded;
           final now = DateTime.now();
 
-          // Generate the session document ID once if not already done.
-          _sessionDocId ??= "${deviceId}_${now.millisecondsSinceEpoch}";
+          // Initialize time fields on the very first upload.
+          if (_initialUploadTime == null) {
+            _initialUploadTime = now;
+            _startedWaiting = now;
+            _timeOfDay = "${now.hour.toString().padLeft(2, '0')}:00"; // e.g., "14:00"
+          }
 
-          // If no route trace exists yet, initialize route data.
+          // Generate the session document ID once if not already done.
+          _sessionDocId ??= "session_${now.millisecondsSinceEpoch}";
+
+          // Initialize route data if needed.
           if (_routeTrace.isEmpty) {
             await _initializeRouteData(currentState.position);
             _routeTrace.add(currentState.position);
           } else {
-            // Calculate distance from the last point in the route trace.
+            // Calculate distance from the last recorded route trace point.
             final lastPoint = _routeTrace.last;
             final distance = _calculateDistance(
               lastPoint.latitude,
@@ -145,14 +158,36 @@ class MapBloc extends Bloc<MapEvent, MapState> {
             _stationaryStartTime = null;
           }
 
+          // Transition logic for status and time fields:
+          // - If status is "waiting": _startedTraveling and _stoppedTraveling remain null.
+          // - If transitioning to "active": if _startedTraveling is null, record it once.
+          // - If transitioning to "complete": if _stoppedTraveling is null, record it once.
+          if (newStatus == "waiting") {
+            _startedTraveling = null;
+            _stoppedTraveling = null;
+          } else if (newStatus == "active") {
+            if (_startedTraveling == null) {
+              _startedTraveling = now;
+            }
+            // Do not update _stoppedTraveling.
+          } else if (newStatus == "complete") {
+            if (_stoppedTraveling == null) {
+              _stoppedTraveling = now;
+            }
+          }
+
+          // Additionally, if not false positive, set status based on speed.
           if (newStatus != "false positive") {
-            if (_lastStatus == "active" || computedSpeedKmh > speedThresholdKmh) {
+            if (_lastStatus != "active" && computedSpeedKmh > speedThresholdKmh) {
+              newStatus = "active";
+            } else if (_lastStatus == "active") {
               newStatus = "active";
             } else {
               newStatus = "waiting";
             }
           }
 
+          // Once active, do not revert to waiting.
           if (_lastStatus == "active" && newStatus == "waiting") {
             newStatus = "active";
           }
@@ -160,14 +195,17 @@ class MapBloc extends Bloc<MapEvent, MapState> {
           _lastStatus = newStatus;
           _lastUploadedLocation = currentState.position;
 
-          // Dispatch the upload event using the session doc ID (_sessionDocId).
+          // Compute totalCommuteTime as the elapsed seconds since the initial upload.
+          final int totalCommuteTime = now.difference(_initialUploadTime!).inSeconds;
+
+          // Dispatch the upload event using our persistent session document ID and time fields.
           add(UploadVehicleTrackingData(
-            docId: _sessionDocId!, // Reuse the generated session document ID.
+            docId: _sessionDocId!,
             deviceId: deviceId,
             routeId: _routeId ?? 0,
             routeName: _routeName ?? "Unknown Route",
-            activeTime: 0,
-            waitingTime: 0,
+            activeTime: 0,         // Placeholder; update as needed.
+            waitingTime: 0,        // Placeholder; update as needed.
             speed: computedSpeedKmh,
             status: newStatus,
             lastLocation: currentState.position,
@@ -176,18 +214,18 @@ class MapBloc extends Bloc<MapEvent, MapState> {
             pickupPoint: currentState.position,
             userOnRoute: true,
             gpsAccuracy: 5.0,
-            distanceTraveled: 0.0,
+            distanceTraveled: 0.0,   // Placeholder; update as needed.
             weekendIndicator: now.weekday >= 6,
             weatherConditions: "Clear",
             trafficConditions: "Moderate",
-            startedWaiting: now,
-            startedTraveling: now,
-            stoppedTraveling: now,
-            totalCommuteTime: 0,
-            totalWaitTime: 0,
-            dateTime: now,
+            startedWaiting: _startedWaiting!,           // Set on first upload.
+            startedTraveling: newStatus == "active" ? _startedTraveling : null, // Set once when active.
+            stoppedTraveling: newStatus == "complete" ? _stoppedTraveling : null, // Set once when complete.
+            totalWaitTime: 0,      // Placeholder; update as needed.
+            dateTime: _initialUploadTime!, // Remains constant for the session.
             trafficLevel: "Low",
             averageTrafficLevel: "Moderate",
+            totalCommuteTime: totalCommuteTime,
           ));
 
           if (newStatus == "false positive") {
@@ -204,10 +242,8 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     String? nearestRoute = await routeDetectionService.findNearbyRoutes(position);
     if (nearestRoute != null) {
       _routeName = nearestRoute;
-      List<Map<String, dynamic>> routes =
-          await routeDetectionService.loadRoutesFromJson();
-      int index =
-          routes.indexWhere((route) => route['name'] == nearestRoute);
+      final routes = await routeDetectionService.loadRoutesFromJson();
+      int index = routes.indexWhere((r) => r['name'] == nearestRoute);
       _routeId = index >= 0 ? index + 1 : 1;
     } else {
       _routeName = "Unknown";
@@ -273,11 +309,11 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         startedWaiting: event.startedWaiting,
         startedTraveling: event.startedTraveling,
         stoppedTraveling: event.stoppedTraveling,
-        totalCommuteTime: event.totalCommuteTime,
         totalWaitTime: event.totalWaitTime,
         dateTime: event.dateTime,
         trafficLevel: event.trafficLevel,
         averageTrafficLevel: event.averageTrafficLevel,
+        totalCommuteTime: event.totalCommuteTime,
       );
       print("Vehicle tracking data uploaded successfully!");
     } catch (e) {
@@ -290,10 +326,8 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     final dLat = _degreesToRadians(lat2 - lat1);
     final dLon = _degreesToRadians(lon2 - lon1);
     final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(_degreesToRadians(lat1)) *
-            cos(_degreesToRadians(lat2)) *
-            sin(dLon / 2) *
-            sin(dLon / 2);
+        cos(_degreesToRadians(lat1)) * cos(_degreesToRadians(lat2)) *
+            sin(dLon / 2) * sin(dLon / 2);
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return earthRadius * c;
   }
