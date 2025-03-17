@@ -23,7 +23,8 @@ List<Widget> pages = [
 ];
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String deviceName;
+  const MyApp({super.key, required this.deviceName});
 
   @override
   Widget build(BuildContext context) {
@@ -52,9 +53,9 @@ class MyApp extends StatelessWidget {
           ),
           BlocProvider(
             create: (context) => MapBloc(
+              deviceId: deviceName, // Now using the actual device name.
               locationRepository: context.read<LocationRepository>(),
               vehicleTrackingRepository: context.read<VehicleTrackingRepository>(),
-              // Provide the routeDetectionService here:
               routeDetectionService: context.read<RouteDetectionService>(),
             )..add(MapLoad()),
           ),

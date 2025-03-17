@@ -9,7 +9,8 @@ class VehicleTrackingRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   Future<void> uploadVehicleData({
-    required String deviceId,
+    required String docId,       // New: Document ID for Firestore.
+    required String deviceId,    // The actual device name.
     required int routeId,
     required String routeName,
     required int activeTime,
@@ -26,15 +27,12 @@ class VehicleTrackingRepository {
     required bool weekendIndicator,
     required String weatherConditions,
     required String trafficConditions,
-    // Detailed timing fields:
     required DateTime startedWaiting,
     required DateTime startedTraveling,
     required DateTime stoppedTraveling,
     required int totalCommuteTime,
     required int totalWaitTime,
-    // Overall update time:
     required DateTime dateTime,
-    // Traffic level fields:
     required String trafficLevel,
     required String averageTrafficLevel,
   }) async {
@@ -84,10 +82,10 @@ class VehicleTrackingRepository {
         'average_traffic_level': averageTrafficLevel,
       };
 
-      // Write to the "actor_report" collection.
+      // Write to the "actor_report" collection using the generated docId.
       await _firestore
           .collection('actor_report')
-          .doc(deviceId)
+          .doc(docId)
           .set(data, SetOptions(merge: true));
       print("Data uploaded successfully!");
     } catch (e) {

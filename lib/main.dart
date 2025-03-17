@@ -1,5 +1,7 @@
 // lib/main.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:pttms/app.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -7,6 +9,18 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:pttms/background/callback_dispatcher.dart';
+
+Future<String> getDeviceName() async {
+  final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+  if (Platform.isAndroid) {
+    final androidInfo = await deviceInfo.androidInfo;
+    return androidInfo.model ?? "Unknown Android Device";
+  } else if (Platform.isIOS) {
+    final iosInfo = await deviceInfo.iosInfo;
+    return iosInfo.utsname.machine ?? "Unknown iOS Device";
+  }
+  return "Unknown Device";
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,12 +47,14 @@ Future<void> main() async {
     inputData: <String, dynamic>{},
   );
 
-  // Initialize Firebase using your options.
+  // Initialize Firebase.
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(const MyApp());
+  // Fetch the device name.
+  final deviceName = await getDeviceName();
+  runApp(MyApp(deviceName: deviceName));
 }
 
 Future<void> _requestLocationPermission() async {

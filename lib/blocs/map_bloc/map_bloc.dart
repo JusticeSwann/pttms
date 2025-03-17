@@ -12,33 +12,37 @@ part 'map_event.dart';
 part 'map_state.dart';
 
 class MapBloc extends Bloc<MapEvent, MapState> {
+  final String deviceId; // The actual device name/ID.
   final LocationRepository locationRepository;
   final VehicleTrackingRepository vehicleTrackingRepository;
   final RouteDetectionService routeDetectionService;
-  
+
   StreamSubscription<LatLng>? _locationSubscription;
   Timer? _uploadTimer;
   int _lastUploadSecond = -1;
-  String? _sessionId; // Generated once per session.
   LatLng? _lastUploadedLocation; // Used to compute movement.
   String _lastStatus = "Waiting"; // Initial status.
-  
-  // Additional fields to track off-route and stationary conditions.
+
+  // Additional fields for off-route and stationary conditions.
   DateTime? _offRouteStartTime;
   DateTime? _stationaryStartTime;
-  
+
   // Fields for route data.
   int? _routeId;
   String? _routeName;
   final List<LatLng> _routeTrace = [];
   final List<LatLng> _stopsMade = [];
-  
+
   // Default speed threshold in km/h for low traffic.
   static const double speedThresholdKmh = 15.0;
   // Distance threshold for adding a new point to route trace.
   static const double traceDistanceThreshold = 5.0;
-  
+
+  // New field to store a session-based document ID.
+  String? _sessionDocId;
+
   MapBloc({
+    required this.deviceId,
     required this.locationRepository,
     required this.vehicleTrackingRepository,
     required this.routeDetectionService,
@@ -47,13 +51,12 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<UpdateCameraPosition>(_onUpdateCameraPosition);
     on<MoveToCurrentLocation>(_onMoveToCurrentLocation);
     on<UploadVehicleTrackingData>(_onUploadVehicleTrackingData);
-    
+
     // Subscribe to continuous location updates.
-    _locationSubscription =
-        locationRepository.trackLocationUpdates().listen((latLng) {
-      add(UpdateCameraPosition(latLng));
-    });
-    
+    _locationSubscription = locationRepository
+        .trackLocationUpdates()
+        .listen((latLng) => add(UpdateCameraPosition(latLng)));
+
     // Set up a periodic timer that fires every second.
     _uploadTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       final int currentSecond = DateTime.now().second;
@@ -63,15 +66,16 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         if (state is MapLoaded) {
           final currentState = state as MapLoaded;
           final now = DateTime.now();
-          // Initialize session ID if not already done.
-          _sessionId ??= "session_${now.millisecondsSinceEpoch}";
-          
+
+          // Generate the session document ID once if not already done.
+          _sessionDocId ??= "${deviceId}_${now.millisecondsSinceEpoch}";
+
           // If no route trace exists yet, initialize route data.
           if (_routeTrace.isEmpty) {
             await _initializeRouteData(currentState.position);
             _routeTrace.add(currentState.position);
           } else {
-            // Calculate distance from last point in the route trace.
+            // Calculate distance from the last point in the route trace.
             final lastPoint = _routeTrace.last;
             final distance = _calculateDistance(
               lastPoint.latitude,
@@ -80,11 +84,9 @@ class MapBloc extends Bloc<MapEvent, MapState> {
               currentState.position.longitude,
             );
             if (distance >= traceDistanceThreshold) {
-              // Append new point and clear stops.
               _routeTrace.add(currentState.position);
               _stopsMade.clear();
             } else {
-              // Record as a stop if not already recorded.
               if (_stopsMade.isEmpty ||
                   _calculateDistance(
                         _stopsMade.last.latitude,
@@ -96,7 +98,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
               }
             }
           }
-          
+
           // Compute instantaneous speed (in km/h) over the 5-second interval.
           double computedSpeedKmh = 0.0;
           if (_lastUploadedLocation != null) {
@@ -108,7 +110,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
             );
             computedSpeedKmh = (movement / 5.0) * 3.6;
           }
-          
+
           // Determine off-route conditions.
           bool onRouteWithin5 = routeDetectionService.isNearRoute(
               currentState.position, distanceThreshold: 5);
@@ -116,10 +118,9 @@ class MapBloc extends Bloc<MapEvent, MapState> {
               currentState.position, distanceThreshold: 30);
           bool offRouteByMoreThan5 = !onRouteWithin5;
           bool offRouteByMoreThan30 = !onRouteWithin30;
-          
+
           String newStatus = _lastStatus; // Start with previous status.
-          
-          // Immediate false positive: off route by >30 meters.
+
           if (offRouteByMoreThan30) {
             newStatus = "false positive";
           } else if (offRouteByMoreThan5 && !offRouteByMoreThan30) {
@@ -130,12 +131,10 @@ class MapBloc extends Bloc<MapEvent, MapState> {
           } else {
             _offRouteStartTime = null;
           }
-          
-          // Check stationary condition when on route and not false positive.
+
           if (onRouteWithin5 && newStatus != "false positive") {
             if (computedSpeedKmh < 1.0) {
               _stationaryStartTime ??= now;
-              // Assume low traffic threshold for stationary (10 minutes).
               if (now.difference(_stationaryStartTime!).inMinutes >= 10) {
                 newStatus = "false positive";
               }
@@ -145,8 +144,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
           } else {
             _stationaryStartTime = null;
           }
-          
-          // Transition to active if not false positive.
+
           if (newStatus != "false positive") {
             if (_lastStatus == "active" || computedSpeedKmh > speedThresholdKmh) {
               newStatus = "active";
@@ -154,23 +152,22 @@ class MapBloc extends Bloc<MapEvent, MapState> {
               newStatus = "waiting";
             }
           }
-          
-          // Once active, do not revert to waiting.
+
           if (_lastStatus == "active" && newStatus == "waiting") {
             newStatus = "active";
           }
-          
-          // Save computed status and update last uploaded location.
+
           _lastStatus = newStatus;
           _lastUploadedLocation = currentState.position;
-          
-          // Dispatch the upload event with the collected data.
+
+          // Dispatch the upload event using the session doc ID (_sessionDocId).
           add(UploadVehicleTrackingData(
-            deviceId: _sessionId!,
+            docId: _sessionDocId!, // Reuse the generated session document ID.
+            deviceId: deviceId,
             routeId: _routeId ?? 0,
             routeName: _routeName ?? "Unknown Route",
-            activeTime: 0, // Update with actual active time if tracked.
-            waitingTime: 0, // Update with actual waiting time if tracked.
+            activeTime: 0,
+            waitingTime: 0,
             speed: computedSpeedKmh,
             status: newStatus,
             lastLocation: currentState.position,
@@ -179,7 +176,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
             pickupPoint: currentState.position,
             userOnRoute: true,
             gpsAccuracy: 5.0,
-            distanceTraveled: 0.0, // Update cumulative distance if needed.
+            distanceTraveled: 0.0,
             weekendIndicator: now.weekday >= 6,
             weatherConditions: "Clear",
             trafficConditions: "Moderate",
@@ -189,11 +186,10 @@ class MapBloc extends Bloc<MapEvent, MapState> {
             totalCommuteTime: 0,
             totalWaitTime: 0,
             dateTime: now,
-            trafficLevel: "Low", // Replace with actual traffic data if available.
+            trafficLevel: "Low",
             averageTrafficLevel: "Moderate",
           ));
-          
-          // If false positive is detected, cancel further updates.
+
           if (newStatus == "false positive") {
             print("False positive detected, stopping updates.");
             _uploadTimer?.cancel();
@@ -203,15 +199,15 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       }
     });
   }
-  
+
   Future<void> _initializeRouteData(LatLng position) async {
-    // Use findNearbyRoutes to get the nearest route's name if within 10 meters.
     String? nearestRoute = await routeDetectionService.findNearbyRoutes(position);
     if (nearestRoute != null) {
       _routeName = nearestRoute;
-      // Load routes and determine the route ID by matching the name.
-      List<Map<String, dynamic>> routes = await routeDetectionService.loadRoutesFromJson();
-      int index = routes.indexWhere((route) => route['name'] == nearestRoute);
+      List<Map<String, dynamic>> routes =
+          await routeDetectionService.loadRoutesFromJson();
+      int index =
+          routes.indexWhere((route) => route['name'] == nearestRoute);
       _routeId = index >= 0 ? index + 1 : 1;
     } else {
       _routeName = "Unknown";
@@ -219,7 +215,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     }
     print("Initialized route data: route_id=$_routeId, route_name=$_routeName");
   }
-  
+
   Future<void> _onMapLoad(MapLoad event, Emitter<MapState> emit) async {
     emit(MapLoading());
     try {
@@ -233,13 +229,13 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       emit(MapError('Failed to load map: ${e.toString()}'));
     }
   }
-  
+
   void _onUpdateCameraPosition(UpdateCameraPosition event, Emitter<MapState> emit) {
     if (state is MapLoaded) {
       emit(MapLoaded(position: event.position));
     }
   }
-  
+
   Future<void> _onMoveToCurrentLocation(MoveToCurrentLocation event, Emitter<MapState> emit) async {
     if (state is MapLoaded) {
       try {
@@ -252,10 +248,11 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       }
     }
   }
-  
+
   Future<void> _onUploadVehicleTrackingData(UploadVehicleTrackingData event, Emitter<MapState> emit) async {
     try {
       await vehicleTrackingRepository.uploadVehicleData(
+        docId: event.docId,
         deviceId: event.deviceId,
         routeId: event.routeId,
         routeName: event.routeName,
@@ -287,7 +284,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       print("Error uploading vehicle tracking data: $e");
     }
   }
-  
+
   double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
     const earthRadius = 6371000; // meters
     final dLat = _degreesToRadians(lat2 - lat1);
@@ -300,9 +297,9 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return earthRadius * c;
   }
-  
+
   double _degreesToRadians(double degrees) => degrees * pi / 180;
-  
+
   @override
   Future<void> close() {
     _locationSubscription?.cancel();

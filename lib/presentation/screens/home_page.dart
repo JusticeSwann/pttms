@@ -1,3 +1,4 @@
+// lib/presentation/screens/home_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -34,7 +35,7 @@ class HomePage extends StatelessWidget {
             ),
           ];
           
-          // Show the polyline toggle only if the user is on a route.
+          // Show the polyline toggle only if the user is on route.
           if (routeState is RouteTrackingLoaded && routeState.isOnRoute) {
             buttons.add(const SizedBox(height: 10));
             buttons.add(
@@ -56,9 +57,12 @@ class HomePage extends StatelessWidget {
             FloatingActionButton(
               heroTag: 'uploadTestData',
               onPressed: () {
-                // Dispatch an upload event with sample test data.
+                final now = DateTime.now().millisecondsSinceEpoch;
+                // Generate a docId using test device name and timestamp.
+                final String docId = "testDevice123_$now";
                 context.read<MapBloc>().add(
                   UploadVehicleTrackingData(
+                    docId: docId,
                     deviceId: "testDevice123",
                     routeId: 1,
                     routeName: "Test Route",

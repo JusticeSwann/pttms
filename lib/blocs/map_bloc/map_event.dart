@@ -20,9 +20,14 @@ class UpdateCameraPosition extends MapEvent {
 
 class MoveToCurrentLocation extends MapEvent {}
 
-// New event for uploading vehicle tracking data
+/// New event for uploading vehicle tracking data
 class UploadVehicleTrackingData extends MapEvent {
+  /// The Firestore document ID (generated as deviceId_timestamp).
+  final String docId;
+
+  /// The actual device name/ID that is stored in the data payload.
   final String deviceId;
+
   final int routeId;
   final String routeName;
   final int activeTime;
@@ -49,6 +54,7 @@ class UploadVehicleTrackingData extends MapEvent {
   final String averageTrafficLevel;
 
   const UploadVehicleTrackingData({
+    required this.docId,
     required this.deviceId,
     required this.routeId,
     required this.routeName,
@@ -78,6 +84,7 @@ class UploadVehicleTrackingData extends MapEvent {
 
   @override
   List<Object> get props => [
+        docId,
         deviceId,
         routeId,
         routeName,
