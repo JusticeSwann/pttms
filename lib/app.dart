@@ -16,6 +16,7 @@ import 'package:pttms/presentation/widgets/bottom_navbar_widget.dart';
 import 'package:pttms/services/traffic_service.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:pttms/services/notification_service.dart';
+import 'package:pttms/services/ticker.dart';
 
 List<Widget> pages = [
   const HomePage(),
@@ -24,7 +25,7 @@ List<Widget> pages = [
 
 class MyApp extends StatelessWidget {
   final String deviceName;
-  const MyApp({super.key, required this.deviceName});
+  const MyApp({Key? key, required this.deviceName}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +34,8 @@ class MyApp extends StatelessWidget {
         RepositoryProvider(create: (context) => LocationRepository()),
         RepositoryProvider(create: (context) => VehicleTrackingRepository()),
         RepositoryProvider(
-          create: (context) => TrafficService(apiKey: 'YOUR_GOOGLE_API_KEY_HERE'),
+          create: (context) =>
+              TrafficService(apiKey: 'YOUR_GOOGLE_API_KEY_HERE'),
         ),
         RepositoryProvider(create: (context) => RouteDetectionService()),
         RepositoryProvider(
@@ -41,6 +43,8 @@ class MyApp extends StatelessWidget {
             routeDetectionService: context.read<RouteDetectionService>(),
           ),
         ),
+        // Inject the Ticker dependency.
+        RepositoryProvider(create: (context) => Ticker()),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -53,10 +57,12 @@ class MyApp extends StatelessWidget {
           ),
           BlocProvider(
             create: (context) => MapBloc(
-              deviceId: deviceName, // Now using the actual device name.
+              deviceId: deviceName,
               locationRepository: context.read<LocationRepository>(),
-              vehicleTrackingRepository: context.read<VehicleTrackingRepository>(),
+              vehicleTrackingRepository:
+                  context.read<VehicleTrackingRepository>(),
               routeDetectionService: context.read<RouteDetectionService>(),
+              ticker: context.read<Ticker>(), // Injecting Ticker here
             )..add(MapLoad()),
           ),
           BlocProvider(create: (context) => RouteBloc()),

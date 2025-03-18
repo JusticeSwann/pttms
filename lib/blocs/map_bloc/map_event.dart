@@ -22,12 +22,9 @@ class MoveToCurrentLocation extends MapEvent {}
 
 /// Updated: startedTraveling and stoppedTraveling are now nullable.
 class UploadVehicleTrackingData extends MapEvent {
-  /// The Firestore document ID (generated as deviceId_timestamp).
+  // [Fields unchanged...]
   final String docId;
-
-  /// The actual device name/ID that is stored in the data payload.
   final String deviceId;
-
   final int routeId;
   final String routeName;
   final int activeTime;
@@ -44,12 +41,9 @@ class UploadVehicleTrackingData extends MapEvent {
   final bool weekendIndicator;
   final String weatherConditions;
   final String trafficConditions;
-
-  /// Now nullable:
   final DateTime startedWaiting;
-  final DateTime? startedTraveling; 
-  final DateTime? stoppedTraveling; 
-
+  final DateTime? startedTraveling;
+  final DateTime? stoppedTraveling;
   final int totalCommuteTime;
   final int totalWaitTime;
   final DateTime dateTime;
@@ -76,8 +70,8 @@ class UploadVehicleTrackingData extends MapEvent {
     required this.weatherConditions,
     required this.trafficConditions,
     required this.startedWaiting,
-    this.startedTraveling,    // <--- changed to DateTime?
-    this.stoppedTraveling,    // <--- changed to DateTime?
+    this.startedTraveling,
+    this.stoppedTraveling,
     required this.totalCommuteTime,
     required this.totalWaitTime,
     required this.dateTime,
@@ -114,4 +108,13 @@ class UploadVehicleTrackingData extends MapEvent {
         trafficLevel,
         averageTrafficLevel,
       ];
+}
+
+/// New ticker-driven event.
+class MapTick extends MapEvent {
+  final int tickCount;
+  const MapTick(this.tickCount);
+
+  @override
+  List<Object?> get props => [tickCount];
 }
