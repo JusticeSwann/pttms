@@ -1,12 +1,14 @@
+// lib/blocs/movement_bloc/movement_bloc.dart
+
 import 'dart:async';
-import 'dart:math';
 import 'package:bloc/bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'movement_event.dart';
 import 'movement_state.dart';
 import 'package:pttms/services/traffic_service.dart';
 import 'package:pttms/data/services/route_detection_service.dart';
-import 'package:pttms/utils/line_simplification.dart'; // Import the simplification utility
+import 'package:pttms/utils/line_simplification.dart'; // Already imported
+import 'package:pttms/utils/movement_helpers.dart'; // Import your new helper file
 
 /// This bloc manages transitions between waiting, active, complete, and false positive states.
 /// It integrates traffic data updates and enhanced off-route detection.
@@ -77,7 +79,8 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
           event.newLocation,
           trafficLevel: _currentTrafficLevel,
         );
-        if (dualDistances['rawDistance']! > 30 || dualDistances['trafficDistance']! > 30) {
+        if (dualDistances['rawDistance']! > 30 ||
+            dualDistances['trafficDistance']! > 30) {
           _offRouteTimer ??= Timer(offRouteDuration, () {
             add(MarkFalsePositive("Off-route for ${offRouteDuration.inMinutes} minutes"));
           });
@@ -96,32 +99,18 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
       }
 
       final newActiveTime = currentState.activeTime + 5;
-      final routeTrace = List<Map<String, double>>.from(currentState.routeTrace);
-      if (routeTrace.isEmpty) {
-        routeTrace.add({
-          'lat': event.newLocation.latitude,
-          'lng': event.newLocation.longitude,
-        });
-      } else {
-        final lastPoint = routeTrace.last;
-        final distance = _calculateDistance(
-          lastPoint['lat']!,
-          lastPoint['lng']!,
-          event.newLocation.latitude,
-          event.newLocation.longitude,
-        );
-        if (distance > 5.0) {
-          routeTrace.add({
-            'lat': event.newLocation.latitude,
-            'lng': event.newLocation.longitude,
-          });
-        }
-      }
+      // Update the route trace using the helper function.
+      final updatedRouteTrace = updateMovementRouteTrace(
+        List<Map<String, double>>.from(currentState.routeTrace),
+        event.newLocation,
+        5.0, // Threshold value in meters
+      );
+
       emit(
         MovementActive(
           startedTraveling: currentState.startedTraveling,
           activeTime: newActiveTime,
-          routeTrace: routeTrace,
+          routeTrace: updatedRouteTrace,
           stopsMade: currentState.stopsMade,
         ),
       );
@@ -183,7 +172,7 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
   ) {
     final currentState = state;
     if (currentState is MovementActive) {
-      // Before finalizing, simplify the route trace.
+      // Simplify the route trace before finalizing.
       List<LatLng> originalTrace = currentState.routeTrace
           .map((point) => LatLng(point['lat']!, point['lng']!))
           .toList();
@@ -195,7 +184,8 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
           .toList();
 
       final totalCommuteTime = currentState.activeTime;
-      String averageTrafficLevel = _computeAverageTrafficLevel();
+      // Use the helper to compute the average traffic level.
+      String averageTrafficLevel = computeAverageTrafficLevel(_trafficLevels);
       emit(
         MovementComplete(
           stoppedTraveling: event.stoppedTraveling,
@@ -204,7 +194,7 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
           stopsMade: currentState.stopsMade,
         ),
       );
-      // At this point, you could trigger a final upload with _currentTrafficLevel and averageTrafficLevel.
+      // Optionally trigger a final upload using _currentTrafficLevel and averageTrafficLevel.
     }
   }
 
@@ -212,7 +202,6 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
     MarkFalsePositive event,
     Emitter<MovementState> emit,
   ) {
-    // Optionally, you could simplify the route trace here as well.
     emit(MovementFalsePositive(reason: event.reason));
   }
 
@@ -221,37 +210,6 @@ class MovementBloc extends Bloc<MovementEvent, MovementState> {
     Emitter<MovementState> emit,
   ) {
     add(const MarkFalsePositive("User stopped via notification"));
-  }
-
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const earthRadius = 6371000;
-    final dLat = _degreesToRadians(lat2 - lat1);
-    final dLon = _degreesToRadians(lon2 - lon1);
-    final a = (dLat / 2) * (dLat / 2) +
-        (dLon / 2) * (dLon / 2) *
-            (cos(_degreesToRadians(lat1)) * cos(_degreesToRadians(lat2)));
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return earthRadius * c;
-  }
-
-  double _degreesToRadians(double degrees) {
-    return degrees * pi / 180;
-  }
-
-  String _computeAverageTrafficLevel() {
-    if (_trafficLevels.isEmpty) return 'low';
-    int total = 0;
-    for (var level in _trafficLevels) {
-      if (level == 'low') {
-        total += 1;
-      } else if (level == 'medium') total += 2;
-      else if (level == 'high') total += 3;
-    }
-    double avg = total / _trafficLevels.length;
-    if (avg < 1.5) {
-      return 'low';
-    } else if (avg < 2.5) return 'medium';
-    else return 'high';
   }
 
   @override

@@ -1,7 +1,5 @@
 // lib/blocs/map_bloc/map_bloc.dart
-
 import 'dart:async';
-import 'dart:math';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -9,6 +7,7 @@ import 'package:location_repository/location_repository.dart';
 import 'package:pttms/data/repository/vehicle_tracking_repository.dart';
 import 'package:pttms/data/services/route_detection_service.dart';
 import 'package:pttms/services/ticker.dart';
+import 'package:pttms/utils/map_helpers.dart'; // Import the helper file
 
 part 'map_event.dart';
 part 'map_state.dart';
@@ -126,45 +125,23 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       // Generate session document ID if not already set.
       _sessionDocId ??= "session_${now.millisecondsSinceEpoch}";
 
-      // Initialize or update route data.
+      // Update route trace and stops using our helper function.
       if (_routeTrace.isEmpty) {
         await _initializeRouteData(currentState.position);
         _routeTrace.add(currentState.position);
       } else {
-        final lastPoint = _routeTrace.last;
-        final distance = _calculateDistance(
-          lastPoint.latitude,
-          lastPoint.longitude,
-          currentState.position.latitude,
-          currentState.position.longitude,
+        updateRouteData(
+          currentPosition: currentState.position,
+          routeTrace: _routeTrace,
+          stopsMade: _stopsMade,
+          threshold: traceDistanceThreshold,
         );
-        if (distance >= traceDistanceThreshold) {
-          _routeTrace.add(currentState.position);
-          _stopsMade.clear();
-        } else {
-          // Optionally add a stop if we haven't added one recently.
-          if (_stopsMade.isEmpty ||
-              _calculateDistance(
-                    _stopsMade.last.latitude,
-                    _stopsMade.last.longitude,
-                    currentState.position.latitude,
-                    currentState.position.longitude,
-                  ) >= traceDistanceThreshold) {
-            _stopsMade.add(currentState.position);
-          }
-        }
       }
 
       // Compute instantaneous speed (in km/h) over the 5-second interval.
       double computedSpeedKmh = 0.0;
       if (_lastUploadedLocation != null) {
-        final movement = _calculateDistance(
-          _lastUploadedLocation!.latitude,
-          _lastUploadedLocation!.longitude,
-          currentState.position.latitude,
-          currentState.position.longitude,
-        );
-        computedSpeedKmh = (movement / 5.0) * 3.6;
+        computedSpeedKmh = computeSpeedKmh(_lastUploadedLocation!, currentState.position, 5.0);
       }
 
       // Determine off-route conditions.
@@ -323,22 +300,6 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       print("Error uploading vehicle tracking data: $e");
     }
   }
-
-  /// Calculates distance in meters between two lat/long coordinates.
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const earthRadius = 6371000; // meters
-    final dLat = _degreesToRadians(lat2 - lat1);
-    final dLon = _degreesToRadians(lon2 - lon1);
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(_degreesToRadians(lat1)) *
-            cos(_degreesToRadians(lat2)) *
-            sin(dLon / 2) *
-            sin(dLon / 2);
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return earthRadius * c;
-  }
-
-  double _degreesToRadians(double degrees) => degrees * pi / 180;
 
   /// Initializes route data (route ID and route name) based on the current position.
   Future<void> _initializeRouteData(LatLng position) async {
