@@ -1,6 +1,8 @@
+import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:pttms/data/models/route_model.dart';
 import 'package:pttms/data/services/route_detection_service.dart';
-
 class RoutesRepository {
   final RouteDetectionService routeDetectionService;
 
@@ -33,5 +35,15 @@ class RoutesRepository {
 
     // If routeName is non-null, it means the user is near a route
     return routeName != null;
+  }
+
+  Future<List<RouteModel>> fetchRoutes() async {
+    // Example of loading routes from a local JSON file
+    final jsonString = await rootBundle.loadString('assets/routes.json');
+    final Map<String, dynamic> jsonData = jsonDecode(jsonString);
+    final List<dynamic> routesList = jsonData['routes'];
+
+    // Convert each JSON entry into a RouteModel
+    return routesList.map((item) => RouteModel.fromJson(item)).toList();
   }
 }

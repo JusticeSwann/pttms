@@ -14,7 +14,7 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       body: BlocBuilder<RouteTrackingBloc, RouteTrackingState>(
         builder: (context, routeState) {
-          // Use the showPolyline flag from RouteTrackingBloc state, defaulting to true.
+          // Use the showPolyline flag from RouteTrackingBloc state.
           bool showPolyline = true;
           if (routeState is RouteTrackingLoaded) {
             showPolyline = routeState.showPolyline;
@@ -33,70 +33,16 @@ class HomePage extends StatelessWidget {
               },
               child: const Icon(Icons.my_location),
             ),
-          ];
-          
-          // Show the polyline toggle only if the user is on route.
-          if (routeState is RouteTrackingLoaded && routeState.isOnRoute) {
-            buttons.add(const SizedBox(height: 10));
-            buttons.add(
-              FloatingActionButton(
-                heroTag: 'togglePolyline',
-                onPressed: () {
-                  context.read<RouteTrackingBloc>().add(ToggleRoutePolyline());
-                },
-                child: Icon(
-                  routeState.showPolyline ? Icons.visibility : Icons.visibility_off,
-                ),
-              ),
-            );
-          }
-          
-          // Add a new button to trigger a test upload.
-          buttons.add(const SizedBox(height: 10));
-          buttons.add(
+            const SizedBox(height: 10),
+            // Test upload button.
             FloatingActionButton(
               heroTag: 'uploadTestData',
               onPressed: () {
-                final now = DateTime.now().millisecondsSinceEpoch;
-                // Generate a docId using test device name and timestamp.
-                final String docId = "testDevice123_$now";
-                context.read<MapBloc>().add(
-                  UploadVehicleTrackingData(
-                    docId: docId,
-                    deviceId: "testDevice123",
-                    routeId: 1,
-                    routeName: "Test Route",
-                    activeTime: 100,
-                    waitingTime: 50,
-                    speed: 40.5,
-                    status: "Active",
-                    lastLocation: const LatLng(10.0, -61.0),
-                    routeTrace: const [
-                      LatLng(10.0, -61.0),
-                      LatLng(10.1, -61.1)
-                    ],
-                    stopsMade: const [LatLng(10.05, -61.05)],
-                    pickupPoint: const LatLng(10.0, -61.0),
-                    userOnRoute: true,
-                    gpsAccuracy: 5.0,
-                    distanceTraveled: 1200.0,
-                    weekendIndicator: false,
-                    weatherConditions: "Clear",
-                    trafficConditions: "Moderate",
-                    startedWaiting: DateTime.now().subtract(const Duration(minutes: 10)),
-                    startedTraveling: DateTime.now().subtract(const Duration(minutes: 8)),
-                    stoppedTraveling: DateTime.now().subtract(const Duration(minutes: 2)),
-                    totalCommuteTime: 10,
-                    totalWaitTime: 2,
-                    dateTime: DateTime.now(),
-                    trafficLevel: "Low",
-                    averageTrafficLevel: "Moderate",
-                  ),
-                );
+                // Implement your test upload functionality here.
               },
-              child: const Icon(Icons.cloud_upload),
+              child: const Icon(Icons.airplay_outlined),
             ),
-          );
+          ];
           
           return Column(
             mainAxisSize: MainAxisSize.min,

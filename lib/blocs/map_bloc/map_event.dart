@@ -1,3 +1,4 @@
+// lib/blocs/map_bloc/map_event.dart
 part of 'map_bloc.dart';
 
 sealed class MapEvent extends Equatable {
@@ -11,7 +12,6 @@ class MapLoad extends MapEvent {}
 
 class UpdateCameraPosition extends MapEvent {
   final LatLng position;
-
   const UpdateCameraPosition(this.position);
 
   @override
@@ -20,9 +20,7 @@ class UpdateCameraPosition extends MapEvent {
 
 class MoveToCurrentLocation extends MapEvent {}
 
-/// Updated: startedTraveling and stoppedTraveling are now nullable.
 class UploadVehicleTrackingData extends MapEvent {
-  // [Fields unchanged...]
   final String docId;
   final String deviceId;
   final int routeId;
@@ -110,7 +108,6 @@ class UploadVehicleTrackingData extends MapEvent {
       ];
 }
 
-/// New ticker-driven event.
 class MapTick extends MapEvent {
   final int tickCount;
   const MapTick(this.tickCount);

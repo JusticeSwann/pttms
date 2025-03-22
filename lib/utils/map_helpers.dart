@@ -2,7 +2,6 @@
 import 'dart:math';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-/// Calculates the distance in meters between two LatLng points.
 double calculateDistance(LatLng p1, LatLng p2) {
   const double earthRadius = 6371000; // meters
   final dLat = degreesToRadians(p2.latitude - p1.latitude);
@@ -16,18 +15,13 @@ double calculateDistance(LatLng p1, LatLng p2) {
   return earthRadius * c;
 }
 
-/// Converts degrees to radians.
 double degreesToRadians(double degrees) => degrees * pi / 180;
 
-/// Computes the instantaneous speed (in km/h) between two locations over a given time interval in seconds.
 double computeSpeedKmh(LatLng lastLocation, LatLng currentLocation, double intervalSeconds) {
   final movement = calculateDistance(lastLocation, currentLocation);
   return (movement / intervalSeconds) * 3.6;
 }
 
-/// Updates the route trace and stops list based on the current position and a distance threshold.
-/// If the distance from the last trace point exceeds the threshold, the point is added to the trace and stops are cleared.
-/// Otherwise, if the distance from the last stop point exceeds the threshold, the point is added as a stop.
 void updateRouteData({
   required LatLng currentPosition,
   required List<LatLng> routeTrace,

@@ -221,7 +221,7 @@
       },
       {
         "name": "Curepe-Chaguanas",
-        "vehicle_type": "bus",
+        "vehicle_type": "maxi",
         "polyline": [
           [10.6488686, -61.4095503],
           [10.6453932, -61.40955],

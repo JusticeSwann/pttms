@@ -1,13 +1,16 @@
 // lib/app.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:location_repository/location_repository.dart';
 import 'package:pttms/blocs/map_bloc/map_bloc.dart';
 import 'package:pttms/blocs/menu_bloc/menu_bloc.dart';
 import 'package:pttms/blocs/movement_bloc/movement_bloc.dart';
-import 'package:pttms/blocs/route_bloc/route_bloc.dart';
 import 'package:pttms/blocs/route_tracking_bloc/route_tracking_bloc.dart';
+import 'package:pttms/blocs/routes_bloc/routes_bloc.dart';
+import 'package:pttms/blocs/routes_bloc/routes_event.dart';
 import 'package:pttms/data/repository/routes_repository.dart';
+import 'package:pttms/data/repository/routes_selection_repository.dart';
 import 'package:pttms/data/repository/vehicle_tracking_repository.dart';
 import 'package:pttms/data/services/route_detection_service.dart';
 import 'package:pttms/presentation/screens/home_page.dart';
@@ -43,6 +46,9 @@ class MyApp extends StatelessWidget {
             routeDetectionService: context.read<RouteDetectionService>(),
           ),
         ),
+        RepositoryProvider(
+          create: (context) => RouteSelectionRepository(),
+        ),
         // Inject the Ticker dependency.
         RepositoryProvider(create: (context) => Ticker()),
       ],
@@ -62,10 +68,16 @@ class MyApp extends StatelessWidget {
               vehicleTrackingRepository:
                   context.read<VehicleTrackingRepository>(),
               routeDetectionService: context.read<RouteDetectionService>(),
-              ticker: context.read<Ticker>(), // Injecting Ticker here
+              ticker: context.read<Ticker>(),
             )..add(MapLoad()),
           ),
-          BlocProvider(create: (context) => RouteBloc()),
+          // Correctly provide RoutesBloc with its dependencies.
+          BlocProvider(
+            create: (context) => RoutesBloc(
+              context.read<RoutesRepository>(),
+              context.read<RouteSelectionRepository>(),
+            )..add(FetchRoutes()),
+          ),
           BlocProvider(
             create: (context) => RouteTrackingBloc(
               routesRepository: context.read<RoutesRepository>(),

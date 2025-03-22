@@ -1,20 +1,36 @@
-abstract class RoutesState {}
+// lib/blocs/route_bloc/route_state.dart
+import 'package:equatable/equatable.dart';
+import 'package:pttms/data/models/route_model.dart';
 
-class RoutesInitial extends RoutesState {}
+class RouteState extends Equatable {
+  final List<RouteModel> allRoutes;
+  final List<RouteModel> selectedRoutes;
+  final String activeVehicleType; // "bus" or "maxi"
 
-class RoutesLoading extends RoutesState {}
+  const RouteState({
+    required this.allRoutes,
+    required this.selectedRoutes,
+    required this.activeVehicleType,
+  });
 
-class RoutesLoaded extends RoutesState {
-  final List<Map<String, dynamic>> routes; // Full route data
-  final List<String> routeNames; // Extracted route names
+  List<RouteModel> get availableRoutes => allRoutes
+      .where((route) =>
+          route.vehicleType == activeVehicleType &&
+          !selectedRoutes.any((sel) => sel.name == route.name))
+      .toList();
 
-  // Constructor takes full route data and extracts route names
-  RoutesLoaded({required this.routes})
-      : routeNames = routes.map((route) => route['name'] as String).toList();
-}
+  RouteState copyWith({
+    List<RouteModel>? allRoutes,
+    List<RouteModel>? selectedRoutes,
+    String? activeVehicleType,
+  }) {
+    return RouteState(
+      allRoutes: allRoutes ?? this.allRoutes,
+      selectedRoutes: selectedRoutes ?? this.selectedRoutes,
+      activeVehicleType: activeVehicleType ?? this.activeVehicleType,
+    );
+  }
 
-class RoutesError extends RoutesState {
-  final String message;
-
-  RoutesError(this.message);
+  @override
+  List<Object> get props => [allRoutes, selectedRoutes, activeVehicleType];
 }
