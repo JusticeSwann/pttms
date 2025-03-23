@@ -95,6 +95,7 @@ class RoutesSelectionWidget extends StatelessWidget {
                 final trafficLevel = 'Moderate';
                 final arrivalTime = '8:32 AM';
                 final departureTime = '8:35 AM';
+                final lastUpdated = '8:35 AM';
 
                 return Card(
                   shape: RoundedRectangleBorder(
@@ -225,7 +226,7 @@ class RoutesSelectionWidget extends StatelessWidget {
                                   style: const TextStyle(fontSize: 14, color:Colors.blue),
                                 ),
                                 Text(
-                                  'Departure Time   ',
+                                  'Departure Time  ',
                                   style: const TextStyle(fontSize: 14),
                                 ),
                                 Text(
@@ -245,8 +246,14 @@ class RoutesSelectionWidget extends StatelessWidget {
                                   trafficLevel,
                                   style: const TextStyle(fontSize: 14, color:Colors.blue),
                                 ),
-                                const SizedBox(),
-                                const SizedBox(),
+                                Text(
+                                  'Last Updated  ',
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                                Text(
+                                  lastUpdated,
+                                  style: const TextStyle(fontSize: 14, color:Colors.blue),
+                                ),
                               ],
                             ),
                           ],
