@@ -4,6 +4,7 @@ import 'package:pttms/blocs/routes_bloc/routes_bloc.dart';
 import 'package:pttms/blocs/routes_bloc/routes_event.dart';
 import 'package:pttms/blocs/routes_bloc/routes_state.dart';
 import 'package:pttms/data/models/route_card_data.dart';
+import 'package:pttms/blocs/map_bloc/map_bloc.dart';
 
 class RoutesSelectionWidget extends StatelessWidget {
   const RoutesSelectionWidget({super.key});
@@ -54,6 +55,7 @@ class RoutesSelectionWidget extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
+
         // Toggle for vehicle type.
         BlocBuilder<RoutesBloc, RoutesState>(
           builder: (context, state) {
@@ -78,6 +80,7 @@ class RoutesSelectionWidget extends StatelessWidget {
           },
         ),
         const SizedBox(height: 16),
+
         // Display selected routes.
         BlocBuilder<RoutesBloc, RoutesState>(
           builder: (context, state) {
@@ -129,6 +132,7 @@ class RoutesSelectionWidget extends StatelessWidget {
                         const SizedBox(height: 8),
                         const Divider(thickness: 1, color: Colors.black54),
                         const SizedBox(height: 8),
+
                         // Table: 4 rows for Incoming & Outgoing data.
                         Table(
                           columnWidths: const {
@@ -158,63 +162,92 @@ class RoutesSelectionWidget extends StatelessWidget {
                             // Row 2: Wait Time and Arrival Time.
                             TableRow(
                               children: [
-                                Text(
+                                const Text(
                                   'Wait Time :',
-                                  style: const TextStyle(fontSize: 14),
+                                  style: TextStyle(fontSize: 14),
                                 ),
-                                Text(
-                                  route.waitTimeDisplay,
-                                  style: const TextStyle(fontSize: 14, color: Colors.blue),
+                                // Here we replace route.waitTimeDisplay with average wait from MapBloc
+                                BlocBuilder<MapBloc, MapState>(
+                                  builder: (context, mapState) {
+                                    if (mapState is MapLoaded) {
+                                      // Convert averageWaitTime from seconds to minutes
+                                      final avgWaitSec = mapState.averageWaitTime;
+                                      final avgWaitMin = avgWaitSec < 60
+                                          ? 1
+                                          : (avgWaitSec / 60).round();
+                                      return Text(
+                                        '$avgWaitMin min',
+                                        style: const TextStyle(fontSize: 14),
+                                      );
+                                    } else {
+                                      return const Text(
+                                        'N/A',
+                                        style: TextStyle(fontSize: 14),
+                                      );
+                                    }
+                                  },
                                 ),
-                                Text(
+                                const Text(
                                   'Arrival Time :',
-                                  style: const TextStyle(fontSize: 14),
+                                  style: TextStyle(fontSize: 14),
                                 ),
                                 const Text(
                                   '8:32 AM',
-                                  style: TextStyle(fontSize: 14, color: Colors.blue),
+                                  style: TextStyle(fontSize: 14),
                                 ),
                               ],
                             ),
                             // Row 3: ETA and Departure Time.
                             TableRow(
                               children: [
-                                Text(
+                                const Text(
                                   'ETA :',
-                                  style: const TextStyle(fontSize: 14),
+                                  style: TextStyle(fontSize: 14),
                                 ),
                                 const Text(
                                   '< 5 mins',
-                                  style: TextStyle(fontSize: 14, color: Colors.blue),
+                                  style: TextStyle(fontSize: 14),
                                 ),
-                                Text(
-                                  'Departure Time :',
-                                  style: const TextStyle(fontSize: 14),
+                                const Text(
+                                  'Departure Time :  ',
+                                  style: TextStyle(fontSize: 14),
                                 ),
                                 const Text(
                                   '8:35 AM',
-                                  style: TextStyle(fontSize: 14, color: Colors.blue),
+                                  style: TextStyle(fontSize: 14),
                                 ),
                               ],
                             ),
                             // Row 4: Traffic Level and Last Updated.
                             TableRow(
                               children: [
-                                Text(
+                                const Text(
                                   'Traffic Level :',
-                                  style: const TextStyle(fontSize: 14),
+                                  style: TextStyle(fontSize: 14),
                                 ),
                                 const Text(
                                   'Moderate',
-                                  style: TextStyle(fontSize: 14, color: Colors.blue),
-                                ),
-                                Text(
-                                  'Last Updated :',
-                                  style: const TextStyle(fontSize: 14),
+                                  style: TextStyle(fontSize: 14),
                                 ),
                                 const Text(
-                                  '10:00 AM',
-                                  style: TextStyle(fontSize: 14, color: Colors.blue),
+                                  'Last Updated :  ',
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                                // Now we display lastUpdated from MapBloc
+                                BlocBuilder<MapBloc, MapState>(
+                                  builder: (context, mapState) {
+                                    if (mapState is MapLoaded) {
+                                      return Text(
+                                        mapState.lastUpdated,
+                                        style: const TextStyle(fontSize: 14),
+                                      );
+                                    } else {
+                                      return const Text(
+                                        'N/A',
+                                        style: TextStyle(fontSize: 14),
+                                      );
+                                    }
+                                  },
                                 ),
                               ],
                             ),
