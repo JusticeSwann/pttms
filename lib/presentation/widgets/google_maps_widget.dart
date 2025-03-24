@@ -9,16 +9,12 @@ class GoogleMapsWidget extends StatelessWidget {
   final bool showPolyline;
   final Completer<GoogleMapController> _controller = Completer();
 
-  GoogleMapsWidget({
-    super.key,
-    required this.showPolyline,
-  });
+  GoogleMapsWidget({super.key, required this.showPolyline});
   
   @override
   Widget build(BuildContext context) {
     return MultiBlocListener(
       listeners: [
-        // Listen to MapBloc for camera updates and trigger route tracking.
         BlocListener<MapBloc, MapState>(
           listener: (context, mapState) async {
             if (mapState is MapLoaded) {
@@ -26,13 +22,10 @@ class GoogleMapsWidget extends StatelessWidget {
               controller.animateCamera(
                 CameraUpdate.newLatLng(mapState.position),
               );
-              context
-                  .read<RouteTrackingBloc>()
-                  .add(UpdateRouteTracking(mapState.position));
+              context.read<RouteTrackingBloc>().add(UpdateRouteTracking(mapState.position));
             }
           },
         ),
-        // Optionally listen to RouteTrackingBloc for errors.
         BlocListener<RouteTrackingBloc, RouteTrackingState>(
           listener: (context, routeState) {
             if (routeState is RouteTrackingError) {
@@ -50,7 +43,6 @@ class GoogleMapsWidget extends StatelessWidget {
           } else if (mapState is MapLoaded) {
             return BlocBuilder<RouteTrackingBloc, RouteTrackingState>(
               builder: (context, routeState) {
-                // Prepare polylines and status text based on route tracking state.
                 Set<Polyline> polylines = {};
                 String routeStatusText = 'No route data available';
                 if (routeState is RouteTrackingLoaded) {
@@ -72,6 +64,17 @@ class GoogleMapsWidget extends StatelessWidget {
                     };
                   }
                 }
+                // Create markers from active vehicle locations.
+                final markers = mapState.activeVehicleLocations.map((vehicleData) {
+                  return Marker(
+                    markerId: MarkerId(vehicleData.lastLocation.toString()),
+                    position: vehicleData.lastLocation,
+                    infoWindow: InfoWindow(
+                      title: 'Wait: ${vehicleData.waitTime} sec',
+                    ),
+                  );
+                }).toSet();
+
                 return Stack(
                   children: [
                     GoogleMap(
@@ -89,6 +92,7 @@ class GoogleMapsWidget extends StatelessWidget {
                       myLocationEnabled: true,
                       myLocationButtonEnabled: false,
                       polylines: polylines,
+                      markers: markers,
                     ),
                     Positioned(
                       top: 10,

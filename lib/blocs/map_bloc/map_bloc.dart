@@ -8,6 +8,8 @@ import 'package:pttms/data/repository/vehicle_tracking_repository.dart';
 import 'package:pttms/data/services/route_detection_service.dart';
 import 'package:pttms/services/ticker.dart';
 import 'package:pttms/utils/map_helpers.dart'; // Expects updateRouteData and computeSpeedKmh
+import 'package:pttms/data/repository/active_vehicle_stream_repository.dart';
+import 'package:pttms/data/models/vehicle_location_data.dart';
 
 part 'map_event.dart';
 part 'map_state.dart';
@@ -17,36 +19,33 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   final LocationRepository locationRepository;
   final VehicleTrackingRepository vehicleTrackingRepository;
   final RouteDetectionService routeDetectionService;
-  final Ticker ticker; // Injected ticker
+  final Ticker ticker;
+  final ActiveVehicleStreamRepository activeVehicleStreamRepository;
 
   StreamSubscription<LatLng>? _locationSubscription;
   StreamSubscription<int>? _tickerSubscription;
+  StreamSubscription<List<VehicleLocationData>>? _activeVehicleSubscription;
+
+  // For upload & route trace logic:
   LatLng? _lastUploadedLocation;
   String _lastStatus = "Waiting";
-
-  // Time fields.
   DateTime? _initialUploadTime;
   DateTime? _startedWaiting;
   DateTime? _startedTraveling;
   DateTime? _stoppedTraveling;
   String? _timeOfDay;
-
-  // Off-route and stationary conditions.
   DateTime? _offRouteStartTime;
   DateTime? _stationaryStartTime;
-
-  // Route data.
   int? _routeId;
   String? _routeName;
   final List<LatLng> _routeTrace = [];
   final List<LatLng> _stopsMade = [];
-
-  // Default thresholds.
   static const double speedThresholdKmh = 15.0;
   static const double traceDistanceThreshold = 5.0;
-
-  // Session document ID.
   String? _sessionDocId;
+
+  // For streaming active vehicle data.
+  List<VehicleLocationData> _latestActiveVehicles = [];
 
   MapBloc({
     required this.deviceId,
@@ -54,6 +53,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     required this.vehicleTrackingRepository,
     required this.routeDetectionService,
     required this.ticker,
+    required this.activeVehicleStreamRepository,
   }) : super(MapInitial()) {
     on<MapLoad>(_onMapLoad);
     on<UpdateCameraPosition>(_onUpdateCameraPosition);
@@ -61,18 +61,20 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<UploadVehicleTrackingData>(_onUploadVehicleTrackingData);
     on<MapTick>(_onMapTick);
 
-    // Subscribe to continuous location updates.
+    // New events for streaming active vehicle data.
+    on<StartActiveVehicleStream>(_onStartActiveVehicleStream);
+    on<StopActiveVehicleStream>(_onStopActiveVehicleStream);
+    on<ActiveVehicleLocationsUpdated>(_onActiveVehicleLocationsUpdated);
+
     _locationSubscription = locationRepository
         .trackLocationUpdates()
         .listen((latLng) => add(UpdateCameraPosition(latLng)));
 
-    // Subscribe to the ticker stream (1 tick per second).
     _tickerSubscription = ticker.tick().listen((tickCount) {
       add(MapTick(tickCount));
     });
   }
 
-  /// Loads the initial map state.
   Future<void> _onMapLoad(MapLoad event, Emitter<MapState> emit) async {
     emit(MapLoading());
     try {
@@ -80,30 +82,30 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       if (position == null) {
         emit(const MapError('Location permission denied or unavailable.'));
       } else {
-        emit(MapLoaded(position: position, routeTrace: []));
+        emit(MapLoaded(
+            position: position,
+            routeTrace: [],
+            activeVehicleLocations: []));
       }
     } catch (e) {
       emit(MapError('Failed to load map: ${e.toString()}'));
     }
   }
 
-  /// Updates the camera position whenever a new location is received.
   void _onUpdateCameraPosition(UpdateCameraPosition event, Emitter<MapState> emit) {
     if (state is MapLoaded) {
       final currentState = state as MapLoaded;
-      // Preserve the existing routeTrace.
-      emit(MapLoaded(position: event.position, routeTrace: currentState.routeTrace));
+      emit(currentState.copyWith(position: event.position));
     }
   }
 
-  /// Moves the camera to the current device location.
   Future<void> _onMoveToCurrentLocation(MoveToCurrentLocation event, Emitter<MapState> emit) async {
     if (state is MapLoaded) {
       try {
         final LatLng? position = await locationRepository.getCurrentLocation();
         if (position != null) {
           final currentState = state as MapLoaded;
-          emit(MapLoaded(position: position, routeTrace: currentState.routeTrace));
+          emit(currentState.copyWith(position: position));
         }
       } catch (e) {
         emit(MapError('Failed to fetch current location: ${e.toString()}'));
@@ -111,7 +113,42 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     }
   }
 
-  /// Processes the tick events (once per second) and every 5 seconds updates the route trace.
+  Future<void> _onUploadVehicleTrackingData(UploadVehicleTrackingData event, Emitter<MapState> emit) async {
+    try {
+      await vehicleTrackingRepository.uploadVehicleData(
+        docId: event.docId,
+        deviceId: event.deviceId,
+        routeId: event.routeId,
+        routeName: event.routeName,
+        activeTime: event.activeTime,
+        waitingTime: event.waitingTime,
+        speed: event.speed,
+        status: event.status,
+        lastLocation: event.lastLocation,
+        routeTrace: event.routeTrace,
+        stopsMade: event.stopsMade,
+        pickupPoint: event.pickupPoint,
+        userOnRoute: event.userOnRoute,
+        gpsAccuracy: event.gpsAccuracy,
+        distanceTraveled: event.distanceTraveled,
+        weekendIndicator: event.weekendIndicator,
+        weatherConditions: event.weatherConditions,
+        trafficConditions: event.trafficConditions,
+        startedWaiting: event.startedWaiting,
+        startedTraveling: event.startedTraveling,
+        stoppedTraveling: event.stoppedTraveling,
+        totalCommuteTime: event.totalCommuteTime,
+        totalWaitTime: event.totalWaitTime,
+        dateTime: event.dateTime,
+        trafficLevel: event.trafficLevel,
+        averageTrafficLevel: event.averageTrafficLevel,
+      );
+      print("Vehicle tracking data uploaded successfully!");
+    } catch (e) {
+      print("Error uploading vehicle tracking data: $e");
+    }
+  }
+
   Future<void> _onMapTick(MapTick event, Emitter<MapState> emit) async {
     if (event.tickCount % 5 == 0 && state is MapLoaded) {
       final currentState = state as MapLoaded;
@@ -211,7 +248,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       // Total commute time.
       final int totalCommuteTime = now.difference(_initialUploadTime!).inSeconds;
 
-      // Trigger the upload event (this could be handled by another bloc or service).
+      // Trigger the upload event.
       add(UploadVehicleTrackingData(
         docId: _sessionDocId!,
         deviceId: deviceId,
@@ -241,55 +278,34 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         totalCommuteTime: totalCommuteTime,
       ));
 
-      // If a false positive is detected, stop updates; otherwise, emit a new state.
-      if (newStatus == "false positive") {
-        print("False positive detected, stopping updates.");
-        _locationSubscription?.cancel();
-        _tickerSubscription?.cancel();
-      } else {
-        emit(MapLoaded(position: currentState.position, routeTrace: List<LatLng>.from(_routeTrace)));
-      }
+      // Also update the state with the latest active vehicle data (debounced to every 5 sec).
+      emit(currentState.copyWith(activeVehicleLocations: _latestActiveVehicles));
     }
   }
 
-  /// Handles uploading vehicle tracking data.
-  Future<void> _onUploadVehicleTrackingData(UploadVehicleTrackingData event, Emitter<MapState> emit) async {
-    try {
-      await vehicleTrackingRepository.uploadVehicleData(
-        docId: event.docId,
-        deviceId: event.deviceId,
-        routeId: event.routeId,
-        routeName: event.routeName,
-        activeTime: event.activeTime,
-        waitingTime: event.waitingTime,
-        speed: event.speed,
-        status: event.status,
-        lastLocation: event.lastLocation,
-        routeTrace: event.routeTrace,
-        stopsMade: event.stopsMade,
-        pickupPoint: event.pickupPoint,
-        userOnRoute: event.userOnRoute,
-        gpsAccuracy: event.gpsAccuracy,
-        distanceTraveled: event.distanceTraveled,
-        weekendIndicator: event.weekendIndicator,
-        weatherConditions: event.weatherConditions,
-        trafficConditions: event.trafficConditions,
-        startedWaiting: event.startedWaiting,
-        startedTraveling: event.startedTraveling,
-        stoppedTraveling: event.stoppedTraveling,
-        totalCommuteTime: event.totalCommuteTime,
-        totalWaitTime: event.totalWaitTime,
-        dateTime: event.dateTime,
-        trafficLevel: event.trafficLevel,
-        averageTrafficLevel: event.averageTrafficLevel,
-      );
-      print("Vehicle tracking data uploaded successfully!");
-    } catch (e) {
-      print("Error uploading vehicle tracking data: $e");
+  Future<void> _onStartActiveVehicleStream(StartActiveVehicleStream event, Emitter<MapState> emit) async {
+    await _activeVehicleSubscription?.cancel();
+    _activeVehicleSubscription = activeVehicleStreamRepository
+        .streamActiveVehicleLocations(event.routeName)
+        .listen((vehicles) {
+      _latestActiveVehicles = vehicles;
+      // We let the MapTick event trigger state updates every 5 seconds.
+    });
+  }
+
+  Future<void> _onStopActiveVehicleStream(StopActiveVehicleStream event, Emitter<MapState> emit) async {
+    await _activeVehicleSubscription?.cancel();
+    _activeVehicleSubscription = null;
+    _latestActiveVehicles = [];
+  }
+
+  void _onActiveVehicleLocationsUpdated(ActiveVehicleLocationsUpdated event, Emitter<MapState> emit) {
+    if (state is MapLoaded) {
+      final currentState = state as MapLoaded;
+      emit(currentState.copyWith(activeVehicleLocations: event.locations));
     }
   }
 
-  /// Initializes route data (route ID and route name) based on the current position.
   Future<void> _initializeRouteData(LatLng position) async {
     final String? nearestRoute = await routeDetectionService.findNearbyRoutes(position);
     if (nearestRoute != null) {
@@ -308,6 +324,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   Future<void> close() {
     _locationSubscription?.cancel();
     _tickerSubscription?.cancel();
+    _activeVehicleSubscription?.cancel();
     return super.close();
   }
 }

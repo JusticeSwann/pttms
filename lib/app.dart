@@ -1,5 +1,4 @@
 // lib/app.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:location_repository/location_repository.dart';
@@ -12,6 +11,7 @@ import 'package:pttms/blocs/routes_bloc/routes_event.dart';
 import 'package:pttms/data/repository/routes_repository.dart';
 import 'package:pttms/data/repository/routes_selection_repository.dart';
 import 'package:pttms/data/repository/vehicle_tracking_repository.dart';
+import 'package:pttms/data/repository/active_vehicle_stream_repository.dart';
 import 'package:pttms/data/services/route_detection_service.dart';
 import 'package:pttms/presentation/screens/home_page.dart';
 import 'package:pttms/presentation/screens/routes_page.dart';
@@ -46,8 +46,9 @@ class MyApp extends StatelessWidget {
             routeDetectionService: context.read<RouteDetectionService>(),
           ),
         ),
+        RepositoryProvider(create: (context) => RouteSelectionRepository()),
         RepositoryProvider(
-          create: (context) => RouteSelectionRepository(),
+          create: (context) => ActiveVehicleStreamRepository(),
         ),
         // Inject the Ticker dependency.
         RepositoryProvider(create: (context) => Ticker()),
@@ -69,9 +70,10 @@ class MyApp extends StatelessWidget {
                   context.read<VehicleTrackingRepository>(),
               routeDetectionService: context.read<RouteDetectionService>(),
               ticker: context.read<Ticker>(),
+              activeVehicleStreamRepository:
+                  context.read<ActiveVehicleStreamRepository>(),
             )..add(MapLoad()),
           ),
-          // Correctly provide RoutesBloc with its dependencies.
           BlocProvider(
             create: (context) => RoutesBloc(
               context.read<RoutesRepository>(),

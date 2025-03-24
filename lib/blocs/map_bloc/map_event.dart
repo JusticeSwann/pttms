@@ -3,7 +3,6 @@ part of 'map_bloc.dart';
 
 sealed class MapEvent extends Equatable {
   const MapEvent();
-
   @override
   List<Object?> get props => [];
 }
@@ -13,7 +12,6 @@ class MapLoad extends MapEvent {}
 class UpdateCameraPosition extends MapEvent {
   final LatLng position;
   const UpdateCameraPosition(this.position);
-
   @override
   List<Object?> get props => [position];
 }
@@ -111,7 +109,22 @@ class UploadVehicleTrackingData extends MapEvent {
 class MapTick extends MapEvent {
   final int tickCount;
   const MapTick(this.tickCount);
-
   @override
   List<Object?> get props => [tickCount];
+}
+
+class StartActiveVehicleStream extends MapEvent {
+  final String routeName;
+  const StartActiveVehicleStream(this.routeName);
+  @override
+  List<Object?> get props => [routeName];
+}
+
+class StopActiveVehicleStream extends MapEvent {}
+
+class ActiveVehicleLocationsUpdated extends MapEvent {
+  final List<VehicleLocationData> locations;
+  const ActiveVehicleLocationsUpdated(this.locations);
+  @override
+  List<Object?> get props => [locations];
 }
