@@ -1,11 +1,9 @@
-// lib/presentation/widgets/routes_selection_widget.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pttms/blocs/routes_bloc/routes_bloc.dart';
 import 'package:pttms/blocs/routes_bloc/routes_event.dart';
 import 'package:pttms/blocs/routes_bloc/routes_state.dart';
-import 'package:pttms/data/models/route_model.dart';
+import 'package:pttms/data/models/route_card_data.dart';
 
 class RoutesSelectionWidget extends StatelessWidget {
   const RoutesSelectionWidget({super.key});
@@ -14,7 +12,7 @@ class RoutesSelectionWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Row for the location icon + dropdown
+        // Row: location icon + dropdown.
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -30,24 +28,22 @@ class RoutesSelectionWidget extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 color: Colors.white,
               ),
-              child: BlocBuilder<RoutesBloc, RouteState>(
+              child: BlocBuilder<RoutesBloc, RoutesState>(
                 builder: (context, state) {
                   return DropdownButtonHideUnderline(
-                    child: DropdownButton<RouteModel>(
+                    child: DropdownButton<RouteCardData>(
                       isExpanded: true,
                       hint: const Text('Select Route'),
                       value: null,
                       items: state.availableRoutes.map((route) {
-                        return DropdownMenuItem<RouteModel>(
+                        return DropdownMenuItem<RouteCardData>(
                           value: route,
                           child: Text(route.name),
                         );
                       }).toList(),
-                      onChanged: (RouteModel? selectedRoute) {
+                      onChanged: (RouteCardData? selectedRoute) {
                         if (selectedRoute != null) {
-                          context
-                              .read<RoutesBloc>()
-                              .add(RouteSelected(selectedRoute));
+                          context.read<RoutesBloc>().add(RouteSelected(selectedRoute));
                         }
                       },
                     ),
@@ -58,9 +54,8 @@ class RoutesSelectionWidget extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-
-        // Toggle for vehicle type
-        BlocBuilder<RoutesBloc, RouteState>(
+        // Toggle for vehicle type.
+        BlocBuilder<RoutesBloc, RoutesState>(
           builder: (context, state) {
             return ToggleButtons(
               isSelected: [
@@ -83,20 +78,11 @@ class RoutesSelectionWidget extends StatelessWidget {
           },
         ),
         const SizedBox(height: 16),
-
-        // Display selected routes
-        BlocBuilder<RoutesBloc, RouteState>(
+        // Display selected routes.
+        BlocBuilder<RoutesBloc, RoutesState>(
           builder: (context, state) {
             return Column(
               children: state.selectedRoutes.map((route) {
-                // Mock data for demonstration
-                final waitTime = '> 5 mins';
-                final eta = '< 5 mins';
-                final trafficLevel = 'Moderate';
-                final arrivalTime = '8:32 AM';
-                final departureTime = '8:35 AM';
-                final lastUpdated = '8:35 AM';
-
                 return Card(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
@@ -106,11 +92,10 @@ class RoutesSelectionWidget extends StatelessWidget {
                     padding: const EdgeInsets.all(12.0),
                     child: Column(
                       children: [
-                        // Top row: route name on the left, vehicle icon + close on the right
+                        // Top row: route name, vehicle icon, close button.
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // Route name
                             Text(
                               route.name,
                               style: const TextStyle(
@@ -129,9 +114,7 @@ class RoutesSelectionWidget extends StatelessWidget {
                                 const SizedBox(width: 8),
                                 GestureDetector(
                                   onTap: () {
-                                    context
-                                        .read<RoutesBloc>()
-                                        .add(RouteRemoved(route.name));
+                                    context.read<RoutesBloc>().add(RouteRemoved(route.name));
                                   },
                                   child: const Icon(
                                     Icons.close,
@@ -144,16 +127,9 @@ class RoutesSelectionWidget extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        // Divider
                         const Divider(thickness: 1, color: Colors.black54),
                         const SizedBox(height: 8),
-
-                        // Table with 4 columns:
-                        // 0: label (Incoming)
-                        // 1: data (Incoming)
-                        // 2: label (Outgoing)
-                        // 3: data (Outgoing)
-
+                        // Table: 4 rows for Incoming & Outgoing data.
                         Table(
                           columnWidths: const {
                             0: IntrinsicColumnWidth(),
@@ -162,97 +138,83 @@ class RoutesSelectionWidget extends StatelessWidget {
                             3: FlexColumnWidth(1),
                           },
                           children: [
-                            // Row 1: Headings for Incoming, Outgoing
+                            // Row 1: Headings.
                             TableRow(
                               children: [
-                                TableCell(
-                                  verticalAlignment:
-                                      TableCellVerticalAlignment.middle,
-                                  child: Text(
-                                    'Incoming  ',
-                                    textAlign: TextAlign.left,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                Text(
+                                  'Incoming',
+                                  textAlign: TextAlign.left,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
-                                // Empty cell next to "Incoming"
                                 const SizedBox(),
-                                TableCell(
-                                  verticalAlignment:
-                                      TableCellVerticalAlignment.middle,
-                                  child: Text(
-                                    'Outgoing  ',
-                                    textAlign: TextAlign.left,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                Text(
+                                  'Outgoing',
+                                  textAlign: TextAlign.left,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
-                                // Empty cell next to "Outgoing"
                                 const SizedBox(),
                               ],
                             ),
-                            // Row 2: Wait Time, Arrival Time
+                            // Row 2: Wait Time and Arrival Time.
                             TableRow(
                               children: [
                                 Text(
-                                  'Wait Time  ',
+                                  'Wait Time :',
                                   style: const TextStyle(fontSize: 14),
                                 ),
                                 Text(
-                                  waitTime,
-                                  style: const TextStyle(fontSize: 14, color:Colors.blue),
+                                  route.waitTimeDisplay,
+                                  style: const TextStyle(fontSize: 14, color: Colors.blue),
                                 ),
                                 Text(
-                                  'Arrival Time  ',
+                                  'Arrival Time :',
                                   style: const TextStyle(fontSize: 14),
                                 ),
-                                Text(
-                                  arrivalTime,
-                                  style: const TextStyle(fontSize: 14, color:Colors.blue),
+                                const Text(
+                                  '8:32 AM',
+                                  style: TextStyle(fontSize: 14, color: Colors.blue),
                                 ),
                               ],
                             ),
-                            // Row 3: ETA, Departure Time
+                            // Row 3: ETA and Departure Time.
                             TableRow(
                               children: [
                                 Text(
-                                  'ETA  ',
+                                  'ETA :',
                                   style: const TextStyle(fontSize: 14),
                                 ),
-                                Text(
-                                  eta,
-                                  style: const TextStyle(fontSize: 14, color:Colors.blue),
+                                const Text(
+                                  '< 5 mins',
+                                  style: TextStyle(fontSize: 14, color: Colors.blue),
                                 ),
                                 Text(
-                                  'Departure Time  ',
+                                  'Departure Time :',
                                   style: const TextStyle(fontSize: 14),
                                 ),
-                                Text(
-                                  departureTime,
-                                  style: const TextStyle(fontSize: 14, color:Colors.blue),
+                                const Text(
+                                  '8:35 AM',
+                                  style: TextStyle(fontSize: 14, color: Colors.blue),
                                 ),
                               ],
                             ),
-                            // Row 4: Traffic Level, skip outgoing columns
+                            // Row 4: Traffic Level and Last Updated.
                             TableRow(
                               children: [
                                 Text(
-                                  'Traffic Level  ',
+                                  'Traffic Level :',
                                   style: const TextStyle(fontSize: 14),
                                 ),
-                                Text(
-                                  trafficLevel,
-                                  style: const TextStyle(fontSize: 14, color:Colors.blue),
+                                const Text(
+                                  'Moderate',
+                                  style: TextStyle(fontSize: 14, color: Colors.blue),
                                 ),
                                 Text(
-                                  'Last Updated  ',
+                                  'Last Updated :',
                                   style: const TextStyle(fontSize: 14),
                                 ),
-                                Text(
-                                  lastUpdated,
-                                  style: const TextStyle(fontSize: 14, color:Colors.blue),
+                                const Text(
+                                  '10:00 AM',
+                                  style: TextStyle(fontSize: 14, color: Colors.blue),
                                 ),
                               ],
                             ),

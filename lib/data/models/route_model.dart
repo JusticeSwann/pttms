@@ -9,6 +9,9 @@ class RouteModel {
   final LatLng routeStart;
   final LatLng routeEnd;
   final List<LatLng> pickupPoints;
+  
+  /// New field: wait time in seconds.
+  final int waitTime;
 
   RouteModel({
     required this.name,
@@ -17,6 +20,7 @@ class RouteModel {
     required this.routeStart,
     required this.routeEnd,
     required this.pickupPoints,
+    required this.waitTime,
   });
 
   factory RouteModel.fromJson(Map<String, dynamic> json) {
@@ -44,6 +48,11 @@ class RouteModel {
                 (coord[1] as num).toDouble(),
               ))
           .toList(),
+
+      // If JSON has "wait_time", use it. Otherwise default to 60.
+      waitTime: json['wait_time'] != null
+          ? json['wait_time'] as int
+          : 60,
     );
   }
 }

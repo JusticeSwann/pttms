@@ -26,26 +26,37 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   StreamSubscription<int>? _tickerSubscription;
   StreamSubscription<List<VehicleLocationData>>? _activeVehicleSubscription;
 
-  // For upload & route trace logic:
+  // For upload & route trace logic.
   LatLng? _lastUploadedLocation;
-  String _lastStatus = "Waiting";
+  String _lastStatus = "waiting"; // initial status is waiting (all lowercase)
   DateTime? _initialUploadTime;
   DateTime? _startedWaiting;
   DateTime? _startedTraveling;
   DateTime? _stoppedTraveling;
   String? _timeOfDay;
+
+  // Off-route and stationary conditions.
   DateTime? _offRouteStartTime;
   DateTime? _stationaryStartTime;
+
+  // Route data.
   int? _routeId;
   String? _routeName;
   final List<LatLng> _routeTrace = [];
   final List<LatLng> _stopsMade = [];
+
+  // Default thresholds.
   static const double speedThresholdKmh = 15.0;
   static const double traceDistanceThreshold = 5.0;
+
+  // Session document ID.
   String? _sessionDocId;
 
   // For streaming active vehicle data.
   List<VehicleLocationData> _latestActiveVehicles = [];
+
+  // Field to accumulate waiting time in seconds.
+  int _accumulatedWaitTime = 0;
 
   MapBloc({
     required this.deviceId,
@@ -83,9 +94,10 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         emit(const MapError('Location permission denied or unavailable.'));
       } else {
         emit(MapLoaded(
-            position: position,
-            routeTrace: [],
-            activeVehicleLocations: []));
+          position: position,
+          routeTrace: [],
+          activeVehicleLocations: [],
+        ));
       }
     } catch (e) {
       emit(MapError('Failed to load map: ${e.toString()}'));
@@ -121,7 +133,9 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         routeId: event.routeId,
         routeName: event.routeName,
         activeTime: event.activeTime,
-        waitingTime: event.waitingTime,
+        waitingTime: event.status == "waiting"
+            ? DateTime.now().difference(_startedWaiting!).inSeconds
+            : _accumulatedWaitTime,
         speed: event.speed,
         status: event.status,
         lastLocation: event.lastLocation,
@@ -137,11 +151,13 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         startedWaiting: event.startedWaiting,
         startedTraveling: event.startedTraveling,
         stoppedTraveling: event.stoppedTraveling,
-        totalCommuteTime: event.totalCommuteTime,
-        totalWaitTime: event.totalWaitTime,
+        totalWaitTime: event.status == "waiting"
+            ? DateTime.now().difference(_startedWaiting!).inSeconds
+            : _accumulatedWaitTime,
         dateTime: event.dateTime,
         trafficLevel: event.trafficLevel,
         averageTrafficLevel: event.averageTrafficLevel,
+        totalCommuteTime: event.totalCommuteTime,
       );
       print("Vehicle tracking data uploaded successfully!");
     } catch (e) {
@@ -160,6 +176,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         _startedWaiting = now;
         _timeOfDay = "${now.hour.toString().padLeft(2, '0')}:00";
       }
+      // Do not update _timeOfDay after initial set.
 
       // Generate session document ID if needed.
       _sessionDocId ??= "session_${now.millisecondsSinceEpoch}";
@@ -214,32 +231,36 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         _stationaryStartTime = null;
       }
 
-      // Transition logic.
-      if (newStatus == "waiting") {
-        _startedTraveling = null;
-        _stoppedTraveling = null;
-      } else if (newStatus == "active") {
-        if (_startedTraveling == null) {
-          _startedTraveling = now;
-        }
-      } else if (newStatus == "complete") {
-        if (_stoppedTraveling == null) {
-          _stoppedTraveling = now;
-        }
-      }
-
-      if (newStatus != "false positive") {
-        if (_lastStatus != "active" && computedSpeedKmh > speedThresholdKmh) {
+      // Transition logic:
+      // - If currently waiting, check if speed exceeds threshold to transition to active.
+      // - Once active, remain active.
+      if (_lastStatus == "waiting") {
+        if (computedSpeedKmh > speedThresholdKmh) {
           newStatus = "active";
-        } else if (_lastStatus == "active") {
-          newStatus = "active";
+          _startedTraveling = now; // mark the transition time
+          // Do not update waiting time further (freeze _accumulatedWaitTime).
         } else {
           newStatus = "waiting";
+          // Update waiting time.
+          _startedWaiting ??= now; // ensure _startedWaiting is set
         }
+      } else if (_lastStatus == "active") {
+        // Once active, always remain active.
+        newStatus = "active";
+      } else {
+        // Fallback case.
+        newStatus = "waiting";
+        _startedWaiting ??= now;
       }
 
-      if (_lastStatus == "active" && newStatus == "waiting") {
-        newStatus = "active";
+      // Compute waiting time.
+      int computedWaitTime;
+      if (newStatus == "waiting") {
+        computedWaitTime = now.difference(_startedWaiting!).inSeconds;
+        _accumulatedWaitTime = computedWaitTime;
+      } else {
+        // When active, keep the waiting time frozen.
+        computedWaitTime = _accumulatedWaitTime;
       }
 
       _lastStatus = newStatus;
@@ -248,14 +269,14 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       // Total commute time.
       final int totalCommuteTime = now.difference(_initialUploadTime!).inSeconds;
 
-      // Trigger the upload event.
+      // Trigger the upload event with the computed waiting time.
       add(UploadVehicleTrackingData(
         docId: _sessionDocId!,
         deviceId: deviceId,
         routeId: _routeId ?? 0,
         routeName: _routeName ?? "Unknown Route",
-        activeTime: 0,         // Update as needed.
-        waitingTime: 0,        // Update as needed.
+        activeTime: 0, // Update as needed.
+        waitingTime: computedWaitTime,
         speed: computedSpeedKmh,
         status: newStatus,
         lastLocation: currentState.position,
@@ -271,14 +292,14 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         startedWaiting: _startedWaiting!,
         startedTraveling: newStatus == "active" ? _startedTraveling : null,
         stoppedTraveling: newStatus == "complete" ? _stoppedTraveling : null,
-        totalWaitTime: 0,      // Update as needed.
+        totalWaitTime: computedWaitTime,
         dateTime: _initialUploadTime!,
         trafficLevel: "Low",
         averageTrafficLevel: "Moderate",
         totalCommuteTime: totalCommuteTime,
       ));
 
-      // Also update the state with the latest active vehicle data (debounced to every 5 sec).
+      // Update the state with the latest active vehicle data.
       emit(currentState.copyWith(activeVehicleLocations: _latestActiveVehicles));
     }
   }
@@ -289,7 +310,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         .streamActiveVehicleLocations(event.routeName)
         .listen((vehicles) {
       _latestActiveVehicles = vehicles;
-      // We let the MapTick event trigger state updates every 5 seconds.
+      // Let MapTick trigger state updates every 5 seconds.
     });
   }
 

@@ -1,30 +1,29 @@
-// lib/blocs/route_bloc/route_event.dart
 import 'package:equatable/equatable.dart';
-import 'package:pttms/data/models/route_model.dart';
+import 'package:pttms/data/models/route_card_data.dart';
 
-abstract class RouteEvent extends Equatable {
-  const RouteEvent();
+abstract class RoutesEvent extends Equatable {
+  const RoutesEvent();
   @override
   List<Object> get props => [];
 }
 
-class FetchRoutes extends RouteEvent {}
+class FetchRoutes extends RoutesEvent {}
 
-class VehicleTypeSelected extends RouteEvent {
+class VehicleTypeSelected extends RoutesEvent {
   final String vehicleType;
   const VehicleTypeSelected(this.vehicleType);
   @override
   List<Object> get props => [vehicleType];
 }
 
-class RouteSelected extends RouteEvent {
-  final RouteModel selectedRoute;
+class RouteSelected extends RoutesEvent {
+  final RouteCardData selectedRoute;
   const RouteSelected(this.selectedRoute);
   @override
   List<Object> get props => [selectedRoute];
 }
 
-class RouteRemoved extends RouteEvent {
+class RouteRemoved extends RoutesEvent {
   final String routeName;
   const RouteRemoved(this.routeName);
   @override

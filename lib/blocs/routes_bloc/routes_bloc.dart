@@ -1,20 +1,18 @@
-// lib/blocs/route_bloc/routes_bloc.dart
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pttms/blocs/routes_bloc/routes_event.dart';
 import 'package:pttms/blocs/routes_bloc/routes_state.dart';
-import 'package:pttms/data/models/route_model.dart';
+import 'package:pttms/data/models/route_card_data.dart';
 import 'package:pttms/data/repository/routes_repository.dart';
 import 'package:pttms/data/repository/routes_selection_repository.dart';
 
-class RoutesBloc extends Bloc<RouteEvent, RouteState> {
+class RoutesBloc extends Bloc<RoutesEvent, RoutesState> {
   final RoutesRepository _routesRepository;
   final RouteSelectionRepository _selectionRepository;
 
   RoutesBloc(
     this._routesRepository,
     this._selectionRepository,
-  ) : super(const RouteState(
+  ) : super(const RoutesState(
           allRoutes: [],
           selectedRoutes: [],
           activeVehicleType: 'bus',
@@ -25,17 +23,21 @@ class RoutesBloc extends Bloc<RouteEvent, RouteState> {
     on<RouteRemoved>(_onRouteRemoved);
   }
 
-  /// Fetches all available routes and merges in persisted selections.
-  Future<void> _onFetchRoutes(FetchRoutes event, Emitter<RouteState> emit) async {
+  /// Fetches all available routes and merges persisted selections.
+  Future<void> _onFetchRoutes(FetchRoutes event, Emitter<RoutesState> emit) async {
     try {
-      // For demonstration, let's assume you obtain allRoutes from some source.
-      // This could be extended to call an alternative method that returns a full list.
-      final allRoutes = await _routesRepository.fetchRoutes(); // If available
-      final selectedNames = await _selectionRepository.loadSelectedRoutes();
+      // Fetch all routes (original repository returns List<RouteModel>).
+      // Convert each RouteModel to RouteCardData.
+      final routeModels = await _routesRepository.fetchRoutes();
+      final allRoutes = routeModels.map((r) => RouteCardData(
+        name: r.name,
+        vehicleType: r.vehicleType,
+        waitTimeInSeconds: r.waitTime, // Ensure that RouteModel includes waitTime in seconds.
+      )).toList();
 
-      final selectedRoutes = allRoutes
-          .where((r) => selectedNames.contains(r.name))
-          .toList();
+      // Load persisted selected route names.
+      final selectedNames = await _selectionRepository.loadSelectedRoutes();
+      final selectedRoutes = allRoutes.where((r) => selectedNames.contains(r.name)).toList();
 
       emit(state.copyWith(allRoutes: allRoutes, selectedRoutes: selectedRoutes));
     } catch (e) {
@@ -43,35 +45,24 @@ class RoutesBloc extends Bloc<RouteEvent, RouteState> {
     }
   }
 
-  /// Updates the active vehicle type filter.
-  void _onVehicleTypeSelected(
-      VehicleTypeSelected event, Emitter<RouteState> emit) {
+  void _onVehicleTypeSelected(VehicleTypeSelected event, Emitter<RoutesState> emit) {
     emit(state.copyWith(activeVehicleType: event.vehicleType));
   }
 
-  /// Adds a route to the selection and persists it.
-  Future<void> _onRouteSelected(
-      RouteSelected event, Emitter<RouteState> emit) async {
-    final updatedSelected = List<RouteModel>.from(state.selectedRoutes)
+  Future<void> _onRouteSelected(RouteSelected event, Emitter<RoutesState> emit) async {
+    final updatedSelected = List<RouteCardData>.from(state.selectedRoutes)
       ..add(event.selectedRoute);
-
     await _selectionRepository.saveSelectedRoutes(
       updatedSelected.map((r) => r.name).toList(),
     );
-
     emit(state.copyWith(selectedRoutes: updatedSelected));
   }
 
-  /// Removes a route from the selection and updates persistence.
-  Future<void> _onRouteRemoved(
-      RouteRemoved event, Emitter<RouteState> emit) async {
-    final updatedSelected =
-        state.selectedRoutes.where((r) => r.name != event.routeName).toList();
-
+  Future<void> _onRouteRemoved(RouteRemoved event, Emitter<RoutesState> emit) async {
+    final updatedSelected = state.selectedRoutes.where((r) => r.name != event.routeName).toList();
     await _selectionRepository.saveSelectedRoutes(
       updatedSelected.map((r) => r.name).toList(),
     );
-
     emit(state.copyWith(selectedRoutes: updatedSelected));
   }
 }
