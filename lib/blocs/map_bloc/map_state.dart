@@ -15,7 +15,8 @@ class MapLoaded extends MapState {
   final List<LatLng> routeTrace;
   final List<VehicleLocationData> activeVehicleLocations;
   final int averageWaitTime; // in seconds
-  final String lastUpdated; // formatted as "HH:MM AM"
+  final String lastUpdated;  // formatted as "HH:MM AM/PM"
+  final String eta;          // ETA string (e.g., "8 min" or "-")
 
   const MapLoaded({
     required this.position,
@@ -23,11 +24,12 @@ class MapLoaded extends MapState {
     this.activeVehicleLocations = const [],
     this.averageWaitTime = 0,
     this.lastUpdated = "",
+    this.eta = "-",
   });
 
   @override
   List<Object?> get props =>
-      [position, routeTrace, activeVehicleLocations, averageWaitTime, lastUpdated];
+      [position, routeTrace, activeVehicleLocations, averageWaitTime, lastUpdated, eta];
 
   MapLoaded copyWith({
     LatLng? position,
@@ -35,6 +37,7 @@ class MapLoaded extends MapState {
     List<VehicleLocationData>? activeVehicleLocations,
     int? averageWaitTime,
     String? lastUpdated,
+    String? eta,
   }) {
     return MapLoaded(
       position: position ?? this.position,
@@ -42,6 +45,7 @@ class MapLoaded extends MapState {
       activeVehicleLocations: activeVehicleLocations ?? this.activeVehicleLocations,
       averageWaitTime: averageWaitTime ?? this.averageWaitTime,
       lastUpdated: lastUpdated ?? this.lastUpdated,
+      eta: eta ?? this.eta,
     );
   }
 }

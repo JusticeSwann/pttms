@@ -1,4 +1,3 @@
-// lib/blocs/map_bloc/map_event.dart
 part of 'map_bloc.dart';
 
 sealed class MapEvent extends Equatable {

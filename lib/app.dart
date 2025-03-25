@@ -1,4 +1,3 @@
-// lib/app.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:location_repository/location_repository.dart';
@@ -17,9 +16,9 @@ import 'package:pttms/presentation/screens/home_page.dart';
 import 'package:pttms/presentation/screens/routes_page.dart';
 import 'package:pttms/presentation/widgets/bottom_navbar_widget.dart';
 import 'package:pttms/services/traffic_service.dart';
+import 'package:pttms/services/ticker.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:pttms/services/notification_service.dart';
-import 'package:pttms/services/ticker.dart';
 
 List<Widget> pages = [
   const HomePage(),
@@ -50,7 +49,6 @@ class MyApp extends StatelessWidget {
         RepositoryProvider(
           create: (context) => ActiveVehicleStreamRepository(),
         ),
-        // Inject the Ticker dependency.
         RepositoryProvider(create: (context) => Ticker()),
       ],
       child: MultiBlocProvider(
@@ -66,12 +64,11 @@ class MyApp extends StatelessWidget {
             create: (context) => MapBloc(
               deviceId: deviceName,
               locationRepository: context.read<LocationRepository>(),
-              vehicleTrackingRepository:
-                  context.read<VehicleTrackingRepository>(),
+              vehicleTrackingRepository: context.read<VehicleTrackingRepository>(),
               routeDetectionService: context.read<RouteDetectionService>(),
               ticker: context.read<Ticker>(),
-              activeVehicleStreamRepository:
-                  context.read<ActiveVehicleStreamRepository>(),
+              activeVehicleStreamRepository: context.read<ActiveVehicleStreamRepository>(),
+              trafficService: context.read<TrafficService>(),
             )..add(MapLoad()),
           ),
           BlocProvider(
