@@ -1,3 +1,4 @@
+// lib/presentation/widgets/routes_selection_widget.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pttms/blocs/routes_bloc/routes_bloc.dart';
@@ -87,7 +88,6 @@ class RoutesSelectionWidget extends StatelessWidget {
                 return BlocProvider<RouteCardBloc>(
                   create: (context) => RouteCardBloc(
                     routeName: route.name,
-                    // Pass the polyline if available; if not, an empty list.
                     activeVehicleStreamRepository: context.read(),
                     trafficService: context.read(),
                     ticker: context.read(),
@@ -138,7 +138,7 @@ class RoutesSelectionWidget extends StatelessWidget {
                           const SizedBox(height: 8),
                           const Divider(thickness: 1, color: Colors.black54),
                           const SizedBox(height: 8),
-                          // Table: 4 rows for Incoming & Outgoing data.
+                          // Table for route card data.
                           Table(
                             columnWidths: const {
                               0: IntrinsicColumnWidth(),

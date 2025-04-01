@@ -82,8 +82,6 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<MoveToCurrentLocation>(_onMoveToCurrentLocation);
     on<UploadVehicleTrackingData>(_onUploadVehicleTrackingData);
     on<MapTick>(_onMapTick);
-    on<StartActiveVehicleStream>(_onStartActiveVehicleStream);
-    on<StopActiveVehicleStream>(_onStopActiveVehicleStream);
     on<ActiveVehicleLocationsUpdated>(_onActiveVehicleLocationsUpdated);
 
     _locationSubscription = locationRepository
@@ -173,7 +171,6 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         averageTrafficLevel: event.averageTrafficLevel,
         totalCommuteTime: event.totalCommuteTime,
       );
-      print("Vehicle tracking data uploaded successfully!");
     } catch (e) {
       print("Error uploading vehicle tracking data: $e");
     }
@@ -383,20 +380,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     print("Initialized route data: route_id=$_routeId, route_name=$_routeName");
   }
 
-  Future<void> _onStartActiveVehicleStream(StartActiveVehicleStream event, Emitter<MapState> emit) async {
-    await _activeVehicleSubscription?.cancel();
-    _activeVehicleSubscription = activeVehicleStreamRepository
-        .streamActiveVehicleLocations(event.routeName)
-        .listen((vehicles) {
-      add(ActiveVehicleLocationsUpdated(vehicles));
-    });
-  }
 
-  Future<void> _onStopActiveVehicleStream(StopActiveVehicleStream event, Emitter<MapState> emit) async {
-    await _activeVehicleSubscription?.cancel();
-    _activeVehicleSubscription = null;
-    _latestActiveVehicles = [];
-  }
 
   void _onActiveVehicleLocationsUpdated(ActiveVehicleLocationsUpdated event, Emitter<MapState> emit) {
     if (state is MapLoaded) {

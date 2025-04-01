@@ -1,23 +1,20 @@
+// lib/blocs/route_card_bloc/route_card_state.dart
 part of 'route_card_bloc.dart';
 
-sealed class RouteCardState extends Equatable {
+abstract class RouteCardState extends Equatable {
   const RouteCardState();
-
   @override
   List<Object?> get props => [];
 }
 
-/// Initial state before any data is received.
-final class RouteCardInitial extends RouteCardState {
+class RouteCardInitial extends RouteCardState {
   const RouteCardInitial();
 }
 
-/// Loaded state contains the average wait time (in seconds), a formatted last‑updated time,
-/// and the route name. (ETA is set to "-" since when vehicles are active, ETA is not computed.)
-final class RouteCardLoaded extends RouteCardState {
+class RouteCardLoaded extends RouteCardState {
   final int averageWaitTime; // in seconds
-  final String lastUpdated;  // e.g. "10:05 AM"
-  final String eta;          // ETA string (always "-" if active)
+  final String lastUpdated;  // formatted "HH:MM AM/PM"
+  final String eta;          // For now, always "-"
   final String routeName;
 
   const RouteCardLoaded({

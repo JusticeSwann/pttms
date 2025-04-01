@@ -1,3 +1,4 @@
+// lib/app.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:location_repository/location_repository.dart';
@@ -36,8 +37,7 @@ class MyApp extends StatelessWidget {
         RepositoryProvider(create: (context) => LocationRepository()),
         RepositoryProvider(create: (context) => VehicleTrackingRepository()),
         RepositoryProvider(
-          create: (context) =>
-              TrafficService(apiKey: 'YOUR_GOOGLE_API_KEY_HERE'),
+          create: (context) => TrafficService(apiKey: 'YOUR_GOOGLE_API_KEY_HERE'),
         ),
         RepositoryProvider(create: (context) => RouteDetectionService()),
         RepositoryProvider(
