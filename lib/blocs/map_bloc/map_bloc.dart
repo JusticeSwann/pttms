@@ -1,4 +1,3 @@
-// lib/blocs/map_bloc/map_bloc.dart
 import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
@@ -240,21 +239,28 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         _stationaryStartTime = null;
       }
 
-      // Transition logic: if waiting and speed exceeds threshold, switch to active.
-      if (_lastStatus == "waiting") {
-        if (computedSpeedKmh > speedThresholdKmh) {
+      // Transition logic: only update if not already false positive.
+      if (newStatus != "false positive") {
+        if (_lastStatus == "waiting") {
+          if (computedSpeedKmh > speedThresholdKmh) {
+            newStatus = "active";
+            _startedTraveling = now;
+            // Freeze wait time when transitioning to active.
+            _frozenWaitTime = now.difference(_startedWaiting!).inSeconds;
+          } else {
+            newStatus = "waiting";
+          }
+        } else if (_lastStatus == "active") {
           newStatus = "active";
-          _startedTraveling = now;
-          // Freeze wait time when transitioning to active.
-          _frozenWaitTime = now.difference(_startedWaiting!).inSeconds;
         } else {
           newStatus = "waiting";
+          _startedWaiting ??= now;
         }
-      } else if (_lastStatus == "active") {
-        newStatus = "active";
-      } else {
-        newStatus = "waiting";
-        _startedWaiting ??= now;
+      }
+      
+      // If user is off-route, clear the route trace so the polyline is no longer displayed.
+      if (newStatus == "false positive") {
+        _routeTrace.clear();
       }
 
       // Compute local waiting time.
@@ -333,7 +339,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         routeId: _routeId ?? 0,
         routeName: _routeName ?? "Unknown Route",
         activeTime: 0,
-        waitingTime: computedWaitTime, // Use the local waiting time for upload.
+        waitingTime: computedWaitTime,
         speed: computedSpeedKmh,
         status: newStatus,
         lastLocation: currentState.position,
@@ -379,8 +385,6 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     }
     print("Initialized route data: route_id=$_routeId, route_name=$_routeName");
   }
-
-
 
   void _onActiveVehicleLocationsUpdated(ActiveVehicleLocationsUpdated event, Emitter<MapState> emit) {
     if (state is MapLoaded) {

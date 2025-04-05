@@ -2,7 +2,6 @@ part of 'route_tracking_bloc.dart';
 
 sealed class RouteTrackingEvent extends Equatable {
   const RouteTrackingEvent();
-
   @override
   List<Object> get props => [];
 }

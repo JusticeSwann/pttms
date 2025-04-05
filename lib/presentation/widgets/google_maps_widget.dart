@@ -6,10 +6,9 @@ import 'package:pttms/blocs/map_bloc/map_bloc.dart';
 import 'package:pttms/blocs/route_tracking_bloc/route_tracking_bloc.dart';
 
 class GoogleMapsWidget extends StatelessWidget {
-  final bool showPolyline;
   final Completer<GoogleMapController> _controller = Completer();
 
-  GoogleMapsWidget({super.key, required this.showPolyline});
+  GoogleMapsWidget({super.key});
   
   @override
   Widget build(BuildContext context) {
@@ -22,6 +21,7 @@ class GoogleMapsWidget extends StatelessWidget {
               controller.animateCamera(
                 CameraUpdate.newLatLng(mapState.position),
               );
+              // Update the route tracking state based on the new position.
               context.read<RouteTrackingBloc>().add(UpdateRouteTracking(mapState.position));
             }
           },
@@ -53,7 +53,7 @@ class GoogleMapsWidget extends StatelessWidget {
                   } else {
                     routeStatusText = 'Off Route: ${routeState.routeName}';
                   }
-                  if (routeState.isOnRoute && showPolyline) {
+                  if (routeState.showPolyline) {
                     polylines = {
                       Polyline(
                         polylineId: const PolylineId('detectedRoute'),

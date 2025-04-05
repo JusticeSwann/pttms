@@ -14,45 +14,40 @@ class RouteTrackingBloc extends Bloc<RouteTrackingEvent, RouteTrackingState> {
   RouteTrackingBloc({required this.routesRepository}) : super(RouteTrackingBlocInitial()) {
     on<UpdateRouteTracking>(_onUpdateRouteTracking);
     on<ToggleRoutePolyline>(_onToggleRoutePolyline);
-
-    // Start debug timer in a separate function to ensure it runs
     _startDebugTimer();
   }
 
-  /// Start a timer that prints the current state every 5 seconds
   void _startDebugTimer() {
-    _printTimer?.cancel(); // Ensure no duplicate timers
+    _printTimer?.cancel();
     _printTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      print("🔄 DEBUG: Current RouteTrackingState -> $state");
+      print("DEBUG: Current RouteTrackingState -> $state");
     });
-    print("⏳ Debug timer started! It will print route tracking state every 5 seconds.");
+    print("Debug timer started!");
   }
 
   Future<void> _onUpdateRouteTracking(UpdateRouteTracking event, Emitter<RouteTrackingState> emit) async {
     emit(RouteTrackingLoading());
     try {
-      // 1) Determine the name of the closest route (within 300m)
+      // 1) Determine the nearby route name (if any)
       final String? routeName = await routesRepository.getNearbyRoute(event.position);
-      print("🛣️ Detected nearby route: $routeName");
-
-      // 2) Check if user is near a route (within 50m threshold by default)
+      // 2) Check if the current position is near the route
       final bool isOnRoute = await routesRepository.isPositionNearRouteAsync(event.position);
-      print("📍 isOnRoute: $isOnRoute");
-
-      // 3) Retrieve the polyline for the closest route (within 300m)
-      final List<LatLng> routePolyline = routesRepository.getDetectedRoutePolyline();
-      //print("📏 Polyline points: ${routePolyline.length} points");
-
-      // Emit a new state with a fresh list instance for the polyline.
+      // 3) Get the polyline for the detected route
+      List<LatLng> routePolyline = routesRepository.getDetectedRoutePolyline();
+      // If the user is not on-route, clear the polyline and update flag accordingly.
+      bool showPolyline = isOnRoute;
+      if (!isOnRoute) {
+        routePolyline = [];
+      }
       emit(RouteTrackingLoaded(
         routeName: routeName,
         isOnRoute: isOnRoute,
-        routePolyline: List.from(routePolyline),
-        showPolyline: true,
+        routePolyline: routePolyline,
+        showPolyline: showPolyline,
       ));
     } catch (e) {
       emit(RouteTrackingError('Failed to load route tracking: ${e.toString()}'));
-      print("❌ Error in route tracking: $e");
+      print("Error in route tracking: $e");
     }
   }
 
@@ -71,7 +66,7 @@ class RouteTrackingBloc extends Bloc<RouteTrackingEvent, RouteTrackingState> {
   @override
   Future<void> close() {
     _printTimer?.cancel();
-    print("⏹️ Debug timer stopped.");
+    print("Debug timer stopped.");
     return super.close();
   }
 }

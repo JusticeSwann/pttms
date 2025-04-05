@@ -1,7 +1,5 @@
-// lib/presentation/screens/home_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pttms/blocs/map_bloc/map_bloc.dart';
 import 'package:pttms/blocs/route_tracking_bloc/route_tracking_bloc.dart';
 import 'package:pttms/presentation/widgets/google_maps_widget.dart';
@@ -12,16 +10,8 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: BlocBuilder<RouteTrackingBloc, RouteTrackingState>(
-        builder: (context, routeState) {
-          // Use the showPolyline flag from RouteTrackingBloc state.
-          bool showPolyline = true;
-          if (routeState is RouteTrackingLoaded) {
-            showPolyline = routeState.showPolyline;
-          }
-          return GoogleMapsWidget(showPolyline: showPolyline);
-        },
-      ),
+      // The map widget now handles its own polyline display based on route tracking state.
+      body: GoogleMapsWidget(),
       floatingActionButton: BlocBuilder<RouteTrackingBloc, RouteTrackingState>(
         builder: (context, routeState) {
           List<Widget> buttons = [
