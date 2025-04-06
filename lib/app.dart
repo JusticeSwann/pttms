@@ -1,4 +1,3 @@
-// lib/app.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:location_repository/location_repository.dart';
@@ -26,9 +25,27 @@ List<Widget> pages = [
   const RoutesPage(),
 ];
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   final String deviceName;
   const MyApp({Key? key, required this.deviceName}) : super(key: key);
+
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _notificationShown = false;
+
+  // Updated handler: Only show notification once, and do not re-register periodic tasks here.
+  void _handleTrackingStateChange(RouteTrackingState state) {
+    if (state is RouteTrackingLoaded) {
+      if (!_notificationShown) {
+        showPersistentNotification();
+        _notificationShown = true;
+      }
+    }
+    // No cancellation logic here so that once shown, the notification remains persistent.
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +54,8 @@ class MyApp extends StatelessWidget {
         RepositoryProvider(create: (context) => LocationRepository()),
         RepositoryProvider(create: (context) => VehicleTrackingRepository()),
         RepositoryProvider(
-          create: (context) => TrafficService(apiKey: 'YOUR_GOOGLE_API_KEY_HERE'),
+          create: (context) =>
+              TrafficService(apiKey: 'YOUR_GOOGLE_API_KEY_HERE'),
         ),
         RepositoryProvider(create: (context) => RouteDetectionService()),
         RepositoryProvider(
@@ -62,7 +80,7 @@ class MyApp extends StatelessWidget {
           ),
           BlocProvider(
             create: (context) => MapBloc(
-              deviceId: deviceName,
+              deviceId: widget.deviceName,
               locationRepository: context.read<LocationRepository>(),
               vehicleTrackingRepository: context.read<VehicleTrackingRepository>(),
               routeDetectionService: context.read<RouteDetectionService>(),
@@ -109,19 +127,5 @@ class MyApp extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  void _handleTrackingStateChange(RouteTrackingState state) {
-    if (state is RouteTrackingLoaded) {
-      Workmanager().registerPeriodicTask(
-        "backgroundTracking",
-        "backgroundTrackingTask",
-        frequency: const Duration(minutes: 15),
-      );
-      showPersistentNotification();
-    } else {
-      Workmanager().cancelByUniqueName("backgroundTracking");
-      flutterLocalNotificationsPlugin.cancel(0);
-    }
   }
 }
