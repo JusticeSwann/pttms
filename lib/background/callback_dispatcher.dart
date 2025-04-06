@@ -1,4 +1,3 @@
-// lib/background/callback_dispatcher.dart
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../firebase_options.dart';
@@ -24,6 +23,14 @@ void callbackDispatcher() {
       Hive.init('./hive_background');
       await Hive.openBox('trackingUpdates');
 
+      // Check if tracking is enabled.
+      var box = Hive.box('trackingUpdates');
+      bool trackingEnabled = box.get('tracking_enabled', defaultValue: true);
+      if (!trackingEnabled) {
+        print("Tracking disabled; skipping background upload.");
+        return Future.value(true);
+      }
+
       // Create an instance of LocalStorageService.
       final localStorageService = LocalStorageService();
 
@@ -37,11 +44,9 @@ void callbackDispatcher() {
       // Attempt to upload each pending update.
       for (var update in pendingUpdates) {
         try {
-          // If update already contains a 'doc_id', use it; otherwise, generate a new one.
           final String docId = update['doc_id'] ?? "session_${DateTime.now().millisecondsSinceEpoch}";
-          
           await vehicleRepo.uploadVehicleData(
-            docId: docId, // Provide the generated or stored document ID.
+            docId: docId,
             deviceId: update['device_id'],
             routeId: update['route_id'],
             routeName: update['route_name'],
@@ -81,7 +86,6 @@ void callbackDispatcher() {
           print("Successfully synced update for device: ${update['device_id']}");
         } catch (e) {
           print("Error syncing update: $e");
-          // Optionally, leave the update for retry.
         }
       }
 

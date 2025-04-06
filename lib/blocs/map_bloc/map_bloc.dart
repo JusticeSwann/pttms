@@ -67,6 +67,9 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   // Freeze waiting time when status turns active.
   int? _frozenWaitTime;
 
+  // NEW: Flag to disable data uploads when tracking is stopped.
+  bool _trackingEnabled = true;
+
   MapBloc({
     required this.deviceId,
     required this.locationRepository,
@@ -135,6 +138,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   }
 
   Future<void> _onUploadVehicleTrackingData(UploadVehicleTrackingData event, Emitter<MapState> emit) async {
+    // This method is unchanged – it performs the upload via the repository.
     try {
       final now = DateTime.now();
       await vehicleTrackingRepository.uploadVehicleData(
@@ -186,7 +190,6 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         _startedWaiting = now;
         _timeOfDay = "${now.hour.toString().padLeft(2, '0')}:00";
       }
-      // _timeOfDay remains unchanged after initial set.
 
       // Generate session doc ID if needed.
       _sessionDocId ??= "session_${now.millisecondsSinceEpoch}";
@@ -245,7 +248,6 @@ class MapBloc extends Bloc<MapEvent, MapState> {
           if (computedSpeedKmh > speedThresholdKmh) {
             newStatus = "active";
             _startedTraveling = now;
-            // Freeze wait time when transitioning to active.
             _frozenWaitTime = now.difference(_startedWaiting!).inSeconds;
           } else {
             newStatus = "waiting";
@@ -256,10 +258,10 @@ class MapBloc extends Bloc<MapEvent, MapState> {
           newStatus = "waiting";
           _startedWaiting ??= now;
         }
-      }
-      
-      // If user is off-route, clear the route trace so the polyline is no longer displayed.
-      if (newStatus == "false positive") {
+      } else {
+        // When status becomes false positive, disable tracking.
+        _trackingEnabled = false;
+        // Clear the route trace so the polyline is not displayed.
         _routeTrace.clear();
       }
 
@@ -269,7 +271,6 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         computedWaitTime = now.difference(_startedWaiting!).inSeconds;
         _accumulatedWaitTime = computedWaitTime;
       } else {
-        // When active, use the frozen wait time.
         computedWaitTime = _frozenWaitTime ?? _accumulatedWaitTime;
       }
 
@@ -277,7 +278,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       _lastUploadedLocation = currentState.position;
       final int totalCommuteTime = now.difference(_initialUploadTime!).inSeconds;
 
-      // Compute average wait time from active vehicles (for display in route page).
+      // Compute average wait time from active vehicles.
       int computedAverageWaitTime = 0;
       if (_latestActiveVehicles.isNotEmpty) {
         computedAverageWaitTime = _latestActiveVehicles
@@ -288,10 +289,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         computedAverageWaitTime = 0;
       }
 
-      // Format last updated time.
       final String lastUpdatedStr = _formatTime(now);
-
-      // --- ETA Calculation ---
       String computedEta = "-";
       if (_latestActiveVehicles.isNotEmpty &&
           newStatus != "active" &&
@@ -309,7 +307,6 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         if (nearestPoint != null && minDistance < 50) {
           try {
             final departureTime = (now.millisecondsSinceEpoch / 1000).round();
-            // Use the first active vehicle's lastLocation as the origin.
             final origin = _latestActiveVehicles.first.lastLocation;
             final trafficData = await trafficService.fetchTrafficData(
               origin: origin,
@@ -317,9 +314,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
               departureTime: departureTime,
             );
             final trafficDurationSec = trafficData['traffic_duration'] as int;
-            final travelTimeMin = trafficDurationSec < 60
-                ? 1
-                : (trafficDurationSec / 60).round();
+            final travelTimeMin = trafficDurationSec < 60 ? 1 : (trafficDurationSec / 60).round();
             computedEta = "${travelTimeMin} min";
           } catch (e) {
             computedEta = "-";
@@ -330,39 +325,41 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       } else {
         computedEta = "-";
       }
-      // --- End ETA Calculation ---
 
-      // Trigger the upload event using the local computed wait time.
-      add(UploadVehicleTrackingData(
-        docId: _sessionDocId!,
-        deviceId: deviceId,
-        routeId: _routeId ?? 0,
-        routeName: _routeName ?? "Unknown Route",
-        activeTime: 0,
-        waitingTime: computedWaitTime,
-        speed: computedSpeedKmh,
-        status: newStatus,
-        lastLocation: currentState.position,
-        routeTrace: List<LatLng>.from(_routeTrace),
-        stopsMade: List<LatLng>.from(_stopsMade),
-        pickupPoint: currentState.position,
-        userOnRoute: true,
-        gpsAccuracy: 5.0,
-        distanceTraveled: 0.0,
-        weekendIndicator: now.weekday >= 6,
-        weatherConditions: "Clear",
-        trafficConditions: "Moderate",
-        startedWaiting: _startedWaiting!,
-        startedTraveling: newStatus == "active" ? _startedTraveling : null,
-        stoppedTraveling: newStatus == "complete" ? _stoppedTraveling : null,
-        totalWaitTime: computedWaitTime,
-        dateTime: _initialUploadTime!,
-        trafficLevel: "Low",
-        averageTrafficLevel: "Moderate",
-        totalCommuteTime: totalCommuteTime,
-      ));
+      // Only trigger the upload event if tracking is enabled.
+      if (_trackingEnabled) {
+        add(UploadVehicleTrackingData(
+          docId: _sessionDocId!,
+          deviceId: deviceId,
+          routeId: _routeId ?? 0,
+          routeName: _routeName ?? "Unknown Route",
+          activeTime: 0,
+          waitingTime: computedWaitTime,
+          speed: computedSpeedKmh,
+          status: newStatus,
+          lastLocation: currentState.position,
+          routeTrace: List<LatLng>.from(_routeTrace),
+          stopsMade: List<LatLng>.from(_stopsMade),
+          pickupPoint: currentState.position,
+          userOnRoute: true,
+          gpsAccuracy: 5.0,
+          distanceTraveled: 0.0,
+          weekendIndicator: now.weekday >= 6,
+          weatherConditions: "Clear",
+          trafficConditions: "Moderate",
+          startedWaiting: _startedWaiting!,
+          startedTraveling: newStatus == "active" ? _startedTraveling : null,
+          stoppedTraveling: newStatus == "complete" ? _stoppedTraveling : null,
+          totalWaitTime: computedWaitTime,
+          dateTime: _initialUploadTime!,
+          trafficLevel: "Low",
+          averageTrafficLevel: "Moderate",
+          totalCommuteTime: totalCommuteTime,
+        ));
+      } else {
+        print("Tracking is disabled; skipping data upload.");
+      }
 
-      // Emit updated state with average wait time from stream, last updated time, and ETA.
       emit(currentState.copyWith(
         activeVehicleLocations: _latestActiveVehicles,
         averageWaitTime: computedAverageWaitTime,
