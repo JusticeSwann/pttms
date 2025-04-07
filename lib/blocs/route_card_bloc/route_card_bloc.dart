@@ -13,9 +13,12 @@ part 'route_card_event.dart';
 part 'route_card_state.dart';
 
 /// This bloc listens to active vehicle data (filtered by status "active")
-/// and computes the average wait time and ETA based on the polyline-constrained
-/// distance between the user's location and the vehicle's streamed location.
-/// If the streamed speed is 0, the previous ETA is retained.
+/// and computes the average wait time, ETA, arrival time, and departure time.
+/// - Arrival time is set when the vehicle (s-location) comes within 5 meters of the user's location.
+/// - Departure time is updated when the vehicle leaves that 5-meter threshold.
+/// - ETA is calculated based on the polyline-constrained distance and the streamed speed.
+///   If the streamed speed is 0, the previous ETA is retained.
+///   Additionally, if the computed ETA is greater than 30 minutes, the ETA is not updated.
 class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
   final String routeName;
   final ActiveVehicleStreamRepository activeVehicleStreamRepository;
@@ -36,6 +39,10 @@ class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
   ];
   // For demonstration, assume the user's location is at the start of the polyline.
   late LatLng _userLocation;
+
+  // Variables for arrival and departure times.
+  DateTime? _arrivalTime;
+  DateTime? _departureTime;
 
   RouteCardBloc({
     required this.routeName,
@@ -64,11 +71,12 @@ class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
     });
   }
 
-  // Helper functions:
+  // Helper: convert degrees to radians.
   double _deg2rad(double deg) => deg * (pi / 180);
 
+  // Compute the haversine distance (in kilometers) between two points.
   double _haversineDistance(LatLng p1, LatLng p2) {
-    const R = 6371; // Earth's radius in km
+    const R = 6371;
     double dLat = _deg2rad(p2.latitude - p1.latitude);
     double dLon = _deg2rad(p2.longitude - p1.longitude);
     double a = sin(dLat / 2) * sin(dLat / 2) +
@@ -78,6 +86,7 @@ class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
     return R * c;
   }
 
+  // Projects point [p] onto the line segment from [a] to [b].
   LatLng _projectPointOnSegment(LatLng p, LatLng a, LatLng b) {
     double ax = a.latitude;
     double ay = a.longitude;
@@ -95,6 +104,7 @@ class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
     return LatLng(ax + t * abx, ay + t * aby);
   }
 
+  // Computes the distance along the polyline between the projections of the user and stream locations.
   double _polylineDistanceBetween(List<LatLng> polyline, LatLng user, LatLng stream) {
     if (polyline.isEmpty) return 0;
     double minDistUser = double.infinity;
@@ -133,14 +143,21 @@ class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
     return distance;
   }
 
+  /// Calculates ETA using the polyline distance and the streamed speed.
+  /// If [speed] is 0, returns the last ETA.
+  /// If the computed ETA exceeds 30 minutes, it retains the previous ETA.
   String _calculateETA(LatLng streamLocation, double speed) {
     if (speed == 0) return _lastETA;
     double distanceKm = _polylineDistanceBetween(_polyline, _userLocation, streamLocation);
-    double etaMinutes = (distanceKm / (speed/10)) * 60;
+    double etaMinutes = (distanceKm / speed) * 60;
     int roundedETA = etaMinutes.round();
-    String newETA = "$roundedETA min";
-    _lastETA = newETA;
-    return newETA;
+    if (roundedETA > 30) {
+      return _lastETA;
+    } else {
+      String newETA = "$roundedETA min";
+      _lastETA = newETA;
+      return newETA;
+    }
   }
 
   void _onVehiclesUpdated(RouteCardVehiclesUpdated event, Emitter<RouteCardState> emit) {
@@ -159,16 +176,46 @@ class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
     }
     print("RouteCardBloc - Computed average wait time: ${averageWaitSec ?? '-'} seconds");
 
-    // Calculate ETA using the first vehicle's speed, if available.
+    // --- Arrival/Departure Time Logic ---
+    // For simplicity, we use the first vehicle's lastLocation.
+    if (vehicles.isNotEmpty) {
+      LatLng sLocation = vehicles.first.lastLocation;
+      double distanceMeters = _haversineDistance(_userLocation, sLocation) * 1000;
+      DateTime now = DateTime.now();
+      if (distanceMeters <= 5) {
+        // Within 5 meters: set arrival time if not already set.
+        if (_arrivalTime == null) {
+          _arrivalTime = now;
+          print("Arrival time set: ${formatTime(_arrivalTime!)}");
+        }
+        // Clear departure time.
+        _departureTime = null;
+      } else {
+        // If vehicle leaves the 5m threshold and arrival time exists, update departure time.
+        if (_arrivalTime != null) {
+          _departureTime = now;
+          print("Departure time updated: ${formatTime(_departureTime!)}");
+        }
+      }
+    } else {
+      // No vehicle data; clear times.
+      _arrivalTime = null;
+      _departureTime = null;
+    }
+
+    // Calculate ETA using the first vehicle's speed (if available).
     double vehicleSpeed = 40; // default speed
     if (vehicles.isNotEmpty) {
       vehicleSpeed = vehicles.first.speed;
-      // If speed is zero, retain the last ETA.
     }
-    String computedETA = vehicles.isNotEmpty ? _calculateETA(vehicles.first.lastLocation, vehicleSpeed) : "-";
+    String computedETA = vehicles.isNotEmpty
+        ? _calculateETA(vehicles.first.lastLocation, vehicleSpeed)
+        : "-";
 
     final now = DateTime.now();
-    final lastUpdatedStr = formatTime(now); // e.g., "10:05 AM"
+    final lastUpdatedStr = formatTime(now);
+    String arrivalStr = _arrivalTime != null ? formatTime(_arrivalTime!) : "-";
+    String departureStr = _departureTime != null ? formatTime(_departureTime!) : "-";
 
     emit(RouteCardLoaded(
       averageWaitTime: averageWaitSec,
@@ -176,6 +223,8 @@ class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
       eta: computedETA,
       routeName: routeName,
       hasData: hasData,
+      arrivalTime: arrivalStr,
+      departureTime: departureStr,
     ));
   }
 
