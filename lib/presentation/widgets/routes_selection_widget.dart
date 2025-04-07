@@ -44,7 +44,9 @@ class RoutesSelectionWidget extends StatelessWidget {
                       }).toList(),
                       onChanged: (RouteCardData? selectedRoute) {
                         if (selectedRoute != null) {
-                          context.read<RoutesBloc>().add(RouteSelected(selectedRoute));
+                          context
+                              .read<RoutesBloc>()
+                              .add(RouteSelected(selectedRoute));
                         }
                       },
                     ),
@@ -93,7 +95,7 @@ class RoutesSelectionWidget extends StatelessWidget {
                   )..add(const RouteCardStart()),
                   child: BlocBuilder<RouteCardBloc, RouteCardState>(
                     builder: (context, state) {
-                      // Determine if there's data and set card color.
+                      // Set card background color based on whether data is available.
                       bool hasData = false;
                       if (state is RouteCardLoaded) {
                         hasData = state.hasData;
@@ -101,8 +103,7 @@ class RoutesSelectionWidget extends StatelessWidget {
                       final cardColor = hasData
                           ? const Color(0xFFF9FFF7)
                           : Colors.white;
-
-                      // Determine route status text ("Active" or "Inactive").
+                      // Append a status label next to the route name.
                       final routeStatusText = hasData ? "Active" : "Inactive";
 
                       return Card(
@@ -115,9 +116,10 @@ class RoutesSelectionWidget extends StatelessWidget {
                           padding: const EdgeInsets.all(12.0),
                           child: Column(
                             children: [
-                              // Top row: route name, route status, vehicle icon, remove button.
+                              // Top row: route name with status, vehicle icon, remove button.
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Row(
                                     children: [
@@ -149,7 +151,9 @@ class RoutesSelectionWidget extends StatelessWidget {
                                       const SizedBox(width: 8),
                                       GestureDetector(
                                         onTap: () {
-                                          context.read<RoutesBloc>().add(RouteRemoved(route.name));
+                                          context
+                                              .read<RoutesBloc>()
+                                              .add(RouteRemoved(route.name));
                                         },
                                         child: const Icon(
                                           Icons.close,
@@ -162,7 +166,8 @@ class RoutesSelectionWidget extends StatelessWidget {
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              const Divider(thickness: 1, color: Colors.black54),
+                              const Divider(
+                                  thickness: 1, color: Colors.black54),
                               const SizedBox(height: 8),
                               // Table for route card data.
                               Table(
@@ -179,13 +184,15 @@ class RoutesSelectionWidget extends StatelessWidget {
                                       Text(
                                         'Incoming',
                                         textAlign: TextAlign.left,
-                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold),
                                       ),
                                       SizedBox(),
                                       Text(
                                         'Outgoing',
                                         textAlign: TextAlign.left,
-                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold),
                                       ),
                                       SizedBox(),
                                     ],
@@ -201,17 +208,23 @@ class RoutesSelectionWidget extends StatelessWidget {
                                         builder: (context, state) {
                                           if (state is RouteCardLoaded) {
                                             if (state.averageWaitTime == null) {
-                                              return const Text('-', style: TextStyle(fontSize: 14));
+                                              return const Text('-',
+                                                  style: TextStyle(
+                                                      fontSize: 14));
                                             } else {
-                                              final avgWaitSec = state.averageWaitTime!;
+                                              final avgWaitSec =
+                                                  state.averageWaitTime!;
                                               final avgWaitMin = avgWaitSec < 60
                                                   ? 1
                                                   : (avgWaitSec / 60).round();
                                               return Text('$avgWaitMin min',
-                                                  style: const TextStyle(fontSize: 14));
+                                                  style: const TextStyle(
+                                                      fontSize: 14));
                                             }
                                           } else {
-                                            return const Text('-', style: TextStyle(fontSize: 14));
+                                            return const Text('-',
+                                                style:
+                                                    TextStyle(fontSize: 14));
                                           }
                                         },
                                       ),
@@ -237,10 +250,13 @@ class RoutesSelectionWidget extends StatelessWidget {
                                           if (state is RouteCardLoaded) {
                                             return Text(
                                               state.eta,
-                                              style: const TextStyle(fontSize: 14),
+                                              style: const TextStyle(
+                                                  fontSize: 14),
                                             );
                                           } else {
-                                            return const Text('-', style: TextStyle(fontSize: 14));
+                                            return const Text('-',
+                                                style:
+                                                    TextStyle(fontSize: 14));
                                           }
                                         },
                                       ),
@@ -274,10 +290,13 @@ class RoutesSelectionWidget extends StatelessWidget {
                                           if (state is RouteCardLoaded) {
                                             return Text(
                                               state.lastUpdated,
-                                              style: const TextStyle(fontSize: 14),
+                                              style: const TextStyle(
+                                                  fontSize: 14),
                                             );
                                           } else {
-                                            return const Text('N/A', style: TextStyle(fontSize: 14));
+                                            return const Text('N/A',
+                                                style:
+                                                    TextStyle(fontSize: 14));
                                           }
                                         },
                                       ),

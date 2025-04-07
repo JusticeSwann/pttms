@@ -14,9 +14,9 @@ class RouteCardLoaded extends RouteCardState {
   /// averageWaitTime is in seconds; if null, it means no data is available.
   final int? averageWaitTime;
   final String lastUpdated;   // Formatted as "HH:MM AM/PM"
-  final String eta;           // For now, always "-"
+  final String eta;           // The computed ETA string (e.g., "5 min" or "-" if not updated)
   final String routeName;
-  /// If true, it means the stream query returned at least one result.
+  /// If true, the stream returned at least one vehicle.
   final bool hasData;
 
   const RouteCardLoaded({
