@@ -1,4 +1,3 @@
-// lib/blocs/route_card_bloc/route_card_event.dart
 part of 'route_card_bloc.dart';
 
 abstract class RouteCardEvent extends Equatable {

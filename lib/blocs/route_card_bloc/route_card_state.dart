@@ -1,4 +1,3 @@
-// lib/blocs/route_card_bloc/route_card_state.dart
 part of 'route_card_bloc.dart';
 
 abstract class RouteCardState extends Equatable {
@@ -12,18 +11,22 @@ class RouteCardInitial extends RouteCardState {
 }
 
 class RouteCardLoaded extends RouteCardState {
-  final int averageWaitTime; // in seconds
-  final String lastUpdated;  // formatted "HH:MM AM/PM"
-  final String eta;          // For now, always "-"
+  /// averageWaitTime is in seconds; if null, it means no data is available.
+  final int? averageWaitTime;
+  final String lastUpdated;   // Formatted as "HH:MM AM/PM"
+  final String eta;           // For now, always "-"
   final String routeName;
+  /// If true, it means the stream query returned at least one result.
+  final bool hasData;
 
   const RouteCardLoaded({
     required this.averageWaitTime,
     required this.lastUpdated,
     required this.eta,
     required this.routeName,
+    required this.hasData,
   });
 
   @override
-  List<Object?> get props => [averageWaitTime, lastUpdated, eta, routeName];
+  List<Object?> get props => [averageWaitTime, lastUpdated, eta, routeName, hasData];
 }

@@ -10,13 +10,13 @@ import 'package:pttms/utils/time_utils.dart'; // For formatTime()
 part 'route_card_event.dart';
 part 'route_card_state.dart';
 
-/// This bloc listens to active vehicle data for a single route and computes
-/// the average wait time (using each vehicle’s waitTime) plus the last updated time.
-/// Since only active vehicles are streamed, ETA is set to "-".
+/// This bloc listens to active vehicle data (filtered by status "active")
+/// and computes the average wait time along with the last updated time.
+/// ETA remains "-" as a placeholder.
 class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
   final String routeName;
   final ActiveVehicleStreamRepository activeVehicleStreamRepository;
-  final TrafficService trafficService; // For future ETA computations.
+  final TrafficService trafficService;
   final Ticker ticker;
 
   StreamSubscription<List<VehicleLocationData>>? _vehicleSubscription;
@@ -31,7 +31,7 @@ class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
     on<RouteCardStart>(_onStart);
     on<RouteCardVehiclesUpdated>(_onVehiclesUpdated);
 
-    // Refresh every 5 seconds
+    // Refresh every 5 seconds.
     _tickerSubscription = ticker.tick().listen((tickCount) {
       if (tickCount % 5 == 0) {
         add(const RouteCardStart());
@@ -43,9 +43,9 @@ class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
     // Cancel any existing subscription.
     await _vehicleSubscription?.cancel();
 
-    // Subscribe to active vehicle stream for the given route.
+    // Subscribe to the active vehicle stream (without filtering by route name).
     _vehicleSubscription = activeVehicleStreamRepository
-        .streamActiveVehicleLocations(routeName)
+        .streamActiveVehicleLocations()
         .listen((vehicles) {
       add(RouteCardVehiclesUpdated(vehicles));
     });
@@ -55,21 +55,22 @@ class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
     final vehicles = event.vehicles;
     print("RouteCardBloc - Received ${vehicles.length} vehicles for route $routeName");
 
-    // Print each vehicle's waitTime for debugging.
     for (final vehicle in vehicles) {
-      print("Vehicle wait time : ${vehicle.waitTime }");
+      print("Vehicle wait time: ${vehicle.waitTime}");
     }
 
-    int averageWaitSec = 0;
+    int? averageWaitSec;
+    bool hasData = vehicles.isNotEmpty;
     if (vehicles.isNotEmpty) {
       final totalWait = vehicles.fold<int>(0, (sum, v) => sum + v.waitTime);
       averageWaitSec = totalWait ~/ vehicles.length;
+    } else {
+      averageWaitSec = null;
     }
-    print("RouteCardBloc - Computed average wait time: $averageWaitSec seconds");
+    print("RouteCardBloc - Computed average wait time: ${averageWaitSec ?? '-'} seconds");
 
     final now = DateTime.now();
-    final lastUpdatedStr = formatTime(now); // e.g. "10:05 AM"
-    // For active vehicles, ETA remains "-"
+    final lastUpdatedStr = formatTime(now); // e.g., "10:05 AM"
     const eta = "-";
 
     emit(RouteCardLoaded(
@@ -77,6 +78,7 @@ class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
       lastUpdated: lastUpdatedStr,
       eta: eta,
       routeName: routeName,
+      hasData: hasData,
     ));
   }
 

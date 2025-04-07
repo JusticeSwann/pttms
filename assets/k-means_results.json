@@ -1,0 +1,12 @@
+[
+  {"weight": 5, "Latitude": 10.6488741, "Longitude": -61.409698},
+  {"weight": 2, "Latitude": 10.6360356, "Longitude": -61.4116261},
+  {"weight": 3, "Latitude": 10.6287432, "Longitude": -61.4068439},
+  {"weight": 3, "Latitude": 10.6081379, "Longitude": -61.3932423},
+  {"weight": 3, "Latitude": 10.6094354, "Longitude": -61.3967492},
+  {"weight": 1, "Latitude": 10.603942,  "Longitude": -61.3810594},
+  {"weight": 2, "Latitude": 10.5769985, "Longitude": -61.379746},
+  {"weight": 4, "Latitude": 10.5659133, "Longitude": -61.3731937},
+  {"weight": 2, "Latitude": 10.5590957, "Longitude": -61.3731989},
+  {"weight": 5, "Latitude": 10.5535055, "Longitude": -61.3731846}
+]

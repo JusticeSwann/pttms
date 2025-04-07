@@ -7,11 +7,10 @@ class ActiveVehicleStreamRepository {
   ActiveVehicleStreamRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  /// Returns a stream of active vehicle location data for a given route.
-  Stream<List<VehicleLocationData>> streamActiveVehicleLocations(String routeName) {
+  /// Returns a stream of active vehicle location data (filtered only by status).
+  Stream<List<VehicleLocationData>> streamActiveVehicleLocations() {
     return _firestore
         .collection('actor_report')
-        .where('route_name', isEqualTo: routeName)
         .where('status', isEqualTo: 'active')
         .snapshots()
         .map((querySnapshot) {
