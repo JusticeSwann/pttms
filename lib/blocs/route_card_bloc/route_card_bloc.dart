@@ -149,7 +149,7 @@ class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
   String _calculateETA(LatLng streamLocation, double speed) {
     if (speed == 0) return _lastETA;
     double distanceKm = _polylineDistanceBetween(_polyline, _userLocation, streamLocation);
-    double etaMinutes = (distanceKm / speed) * 60;
+    double etaMinutes = (distanceKm / (speed/10)) * 60;
     int roundedETA = etaMinutes.round();
     if (roundedETA > 30) {
       return _lastETA;
@@ -182,7 +182,7 @@ class RouteCardBloc extends Bloc<RouteCardEvent, RouteCardState> {
       LatLng sLocation = vehicles.first.lastLocation;
       double distanceMeters = _haversineDistance(_userLocation, sLocation) * 1000;
       DateTime now = DateTime.now();
-      if (distanceMeters <= 5) {
+      if (distanceMeters <= 30) {
         // Within 5 meters: set arrival time if not already set.
         if (_arrivalTime == null) {
           _arrivalTime = now;
